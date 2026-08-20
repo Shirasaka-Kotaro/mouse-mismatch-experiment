@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>動作途中の仮想身体変化 実験</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">MOUSE MOTOR CONTROL LAB / PILOT 01</p>
+          <h1>動作途中の仮想身体変化</h1>
+          <p class="subtitle">マウス操作の途中でカーソルが「重くなる」条件への適応を測定します。</p>
+        </div>
+        <div id="sessionBadge" class="status-badge" data-state="idle">準備中</div>
+      </header>
+
+      <main class="workspace">
+        <aside class="sidebar">
+          <section class="panel setup-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="panel-kicker">SETUP</p>
+                <h2>実験設定</h2>
+              </div>
+              <span class="device-chip">MOUSE</span>
+            </div>
+
+            <label class="field-label" for="participantId">参加者ID</label>
+            <input id="participantId" class="text-input" type="text" value="P001" maxlength="32" autocomplete="off" />
+
+            <label class="field-label" for="trialsPerBlock">1ブロックの試行数</label>
+            <select id="trialsPerBlock" class="select-input">
+              <option value="8">8（動作確認）</option>
+              <option value="12" selected>12（短時間予備実験）</option>
+              <option value="16">16（標準）</option>
+              <option value="24">24（多試行）</option>
+            </select>
+
+            <div class="range-field">
+              <div class="range-header">
+                <label class="field-label" for="lagStrength">カーソルの重さ</label>
+                <output id="lagStrengthValue" for="lagStrength">70%</output>
+              </div>
+              <input id="lagStrength" class="range-input" type="range" min="45" max="85" step="5" value="70" />
+              <p class="field-help">適応フェーズで、入力に対するカーソルの追従を弱めます。</p>
+            </div>
+
+            <div class="range-field">
+              <div class="range-header">
+                <label class="field-label" for="transitionPoint">状態変化の位置</label>
+                <output id="transitionPointValue" for="transitionPoint">55%</output>
+              </div>
+              <input id="transitionPoint" class="range-input" type="range" min="35" max="75" step="5" value="55" />
+              <p class="field-help">開始点から目標までの距離に対する割合。通常は非表示です。</p>
+            </div>
+
+            <label class="check-row" for="showBoundary">
+              <input id="showBoundary" type="checkbox" />
+              <span>状態変化の位置を表示（デモ用）</span>
+            </label>
+          </section>
+
+          <section class="panel action-panel">
+            <div class="panel-heading compact">
+              <div>
+                <p class="panel-kicker">CONTROL</p>
+                <h2>セッション</h2>
+              </div>
+            </div>
+            <div class="button-row">
+              <button id="startButton" class="button primary" type="button">実験を開始</button>
+              <button id="pauseButton" class="button secondary" type="button" disabled>一時停止</button>
+            </div>
+            <button id="resetButton" class="button ghost full-width" type="button">リセット</button>
+            <div id="downloadGroup" class="download-group" hidden>
+              <p class="download-label">データを書き出す</p>
+              <div class="button-row">
+                <button id="csvButton" class="button secondary" type="button">CSV</button>
+                <button id="jsonButton" class="button secondary" type="button">JSON</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel instruction-panel">
+            <p class="panel-kicker">PROTOCOL</p>
+            <h2>操作方法</h2>
+            <ol class="instruction-list">
+              <li>開始円の中へマウスを移動します。</li>
+              <li>左クリックを押したまま、黄色の目標へ移動します。</li>
+              <li>目標内でボタンを離します。</li>
+            </ol>
+            <p class="callout">適応フェーズでは、動作の途中からカーソルの追従が遅くなります。画面上の小さなカーソルだけを見て操作してください。</p>
+          </section>
+        </aside>
+
+        <section class="experiment-column">
+          <div class="progress-panel">
+            <div class="progress-topline">
+              <div>
+                <span class="progress-label">現在のフェーズ</span>
+                <strong id="phaseLabel">開始前</strong>
+              </div>
+              <div class="progress-numbers">
+                <span id="blockLabel">ブロック - / -</span>
+                <span id="trialLabel">試行 - / -</span>
+              </div>
+            </div>
+            <div class="progress-track" aria-hidden="true">
+              <div id="progressBar" class="progress-bar"></div>
+            </div>
+          </div>
+
+          <div class="arena-shell">
+            <div class="arena-toolbar">
+              <div class="arena-title">
+                <span class="live-dot" aria-hidden="true"></span>
+                <span>実験アリーナ</span>
+              </div>
+              <div id="arenaHint" class="arena-hint">実験を開始すると、ここにターゲットが表示されます。</div>
+            </div>
+            <div class="arena-wrap">
+              <canvas id="arena" width="960" height="620" tabindex="0" aria-label="マウスで開始円から黄色いターゲットへ移動する実験エリア"></canvas>
+              <div id="arenaOverlay" class="arena-overlay">
+                <div class="overlay-card">
+                  <span class="overlay-eyebrow">READY TO TEST</span>
+                  <h2 id="overlayTitle">マウス実験を開始してください</h2>
+                  <p id="overlayBody">通常状態、動作途中の摂動、後効果の順に測定します。参加者IDを確認してから開始してください。</p>
+                  <button id="overlayButton" class="button primary" type="button">実験を開始</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="readout-grid" aria-live="polite">
+            <div class="readout-item">
+              <span>状態</span>
+              <strong id="conditionReadout">準備中</strong>
+            </div>
+            <div class="readout-item">
+              <span>直前の移動時間</span>
+              <strong id="movementTimeReadout">—</strong>
+            </div>
+            <div class="readout-item">
+              <span>直前の誤差</span>
+              <strong id="errorReadout">—</strong>
+            </div>
+            <div class="readout-item">
+              <span>成功率</span>
+              <strong id="successReadout">—</strong>
+            </div>
+          </div>
+
+          <section id="resultsPanel" class="panel results-panel" hidden>
+            <div class="panel-heading">
+              <div>
+                <p class="panel-kicker">RESULTS</p>
+                <h2>ブロック別の結果</h2>
+              </div>
+              <span id="resultSummary" class="result-summary"></span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>フェーズ</th>
+                    <th>ブロック</th>
+                    <th>成功率</th>
+                    <th>平均移動時間</th>
+                    <th>平均誤差</th>
+                    <th>Fitts傾き b</th>
+                  </tr>
+                </thead>
+                <tbody id="resultsBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <footer class="footer-note">
+        <span>研究用プロトタイプ</span>
+        <span>表示上のカーソルと実際のマウス軌跡を別々に記録します</span>
+      </footer>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
