@@ -8,6 +8,12 @@
   const ui = {
     participantId: document.getElementById("participantId"),
     trialsPerBlock: document.getElementById("trialsPerBlock"),
+    perturbationMode: document.getElementById("perturbationMode"),
+    perturbationHelp: document.getElementById("perturbationHelp"),
+    rotationAngleField: document.getElementById("rotationAngleField"),
+    rotationAngle: document.getElementById("rotationAngle"),
+    rotationAngleValue: document.getElementById("rotationAngleValue"),
+    lagStrengthField: document.getElementById("lagStrengthField"),
     lagStrength: document.getElementById("lagStrength"),
     lagStrengthValue: document.getElementById("lagStrengthValue"),
     transitionPoint: document.getElementById("transitionPoint"),
@@ -48,6 +54,16 @@
   const START_RADIUS = 22;
   const TARGET_WIDTHS = [24, 30, 38, 48];
   const TARGET_AMPLITUDES = [145, 175, 205, 225];
+  const PERTURBATION_LABELS = {
+    heavy: "重い（遅れて追従）",
+    reverse: "逆方向（180°反転）",
+    rotate: "回転（斜めにずれる）",
+  };
+  const PERTURBATION_HELP = {
+    heavy: "動作途中から、入力に対するカーソルの追従を弱めます。",
+    reverse: "動作途中から、マウスの移動方向と反対方向へカーソルが進みます。",
+    rotate: "動作途中から、マウスの移動方向を指定角度だけ回転させます。",
+  };
 
   const state = {
     sessionState: "idle",
@@ -94,6 +110,27 @@
     return Number.isFinite(value) ? value.toFixed(digits) : "—";
   }
 
+  function perturbationLabel(mode) {
+    return PERTURBATION_LABELS[mode] || PERTURBATION_LABELS.heavy;
+  }
+
+  function effectivePerturbationAngle(mode, configuredAngle) {
+    if (mode === "reverse") return 180;
+    if (mode === "rotate") return Number(configuredAngle);
+    return null;
+  }
+
+  function formatRotationAngle(value) {
+    if (!Number.isFinite(value)) return "—";
+    if (value === 0) return "0°";
+    return `${value > 0 ? "+" : ""}${value}°（${value > 0 ? "時計回り" : "反時計回り"}）`;
+  }
+
+  function conditionLabel(mode, angle) {
+    const label = perturbationLabel(mode);
+    return mode === "rotate" ? `${label} ${formatRotationAngle(angle)}` : label;
+  }
+
   function mulberry32(seed) {
     return () => {
       let t = (seed += 0x6d2b79f5);
@@ -120,6 +157,8 @@
     return {
       participantId: ui.participantId.value.trim() || "P001",
       trialsPerBlock: Number(ui.trialsPerBlock.value),
+      perturbationMode: ui.perturbationMode.value,
+      rotationAngle: Number(ui.rotationAngle.value),
       lagStrength: Number(ui.lagStrength.value) / 100,
       transitionPoint: Number(ui.transitionPoint.value) / 100,
       showBoundary: ui.showBoundary.checked,
@@ -149,7 +188,15 @@
     const canStart = state.sessionState === "idle" || state.sessionState === "complete";
     const locked = active;
 
-    [ui.participantId, ui.trialsPerBlock, ui.lagStrength, ui.transitionPoint, ui.showBoundary].forEach((element) => {
+    [
+      ui.participantId,
+      ui.trialsPerBlock,
+      ui.perturbationMode,
+      ui.rotationAngle,
+      ui.lagStrength,
+      ui.transitionPoint,
+      ui.showBoundary,
+    ].forEach((element) => {
       element.disabled = locked;
     });
 
@@ -163,6 +210,11 @@
   function updateSettingReadouts() {
     ui.lagStrengthValue.textContent = `${ui.lagStrength.value}%`;
     ui.transitionPointValue.textContent = `${ui.transitionPoint.value}%`;
+    ui.rotationAngleValue.textContent = formatRotationAngle(Number(ui.rotationAngle.value));
+    const mode = ui.perturbationMode.value;
+    ui.perturbationHelp.textContent = PERTURBATION_HELP[mode] || PERTURBATION_HELP.heavy;
+    ui.lagStrengthField.hidden = mode !== "heavy";
+    ui.rotationAngleField.hidden = mode !== "rotate";
   }
 
   function updateProgress() {
@@ -190,7 +242,8 @@
     }
 
     if (trial.phaseKey === "adaptation") {
-      ui.conditionReadout.textContent = trial.transitionOccurred ? "摂動状態" : "通常 → 切替待ち";
+      const condition = conditionLabel(trial.perturbationMode, trial.perturbationAngleDeg);
+      ui.conditionReadout.textContent = trial.transitionOccurred ? `摂動：${condition}` : `通常 → ${condition}`;
     } else if (trial.phaseKey === "washout") {
       ui.conditionReadout.textContent = "通常状態（後効果）";
     } else {
@@ -236,10 +289,18 @@
       amplitude,
       fittsId: id,
       targetAngle: angle,
+      perturbationMode: state.settings.perturbationMode,
+      perturbationAngleDeg: effectivePerturbationAngle(state.settings.perturbationMode, state.settings.rotationAngle),
       startedAt: null,
       endedAt: null,
       transitionOccurred: false,
       transitionAt: null,
+      transitionRawX: null,
+      transitionRawY: null,
+      transitionVirtualX: null,
+      transitionVirtualY: null,
+      perturbationOriginRaw: null,
+      perturbationOriginVirtual: null,
       pointerId: null,
       rawPath: [],
       virtualPath: [],
@@ -390,12 +451,7 @@
 
     event.preventDefault();
     const trial = state.currentTrial;
-    const progress = movementProgress(point, trial);
-    if (trial.phaseKey === "adaptation" && !trial.transitionOccurred && progress >= state.settings.transitionPoint) {
-      trial.transitionOccurred = true;
-      trial.transitionAt = performance.now();
-      ui.arenaHint.textContent = "摂動状態です。画面上のカーソルを目標へ合わせてください。";
-    }
+    activatePerturbationIfNeeded(point, trial);
 
     const elapsed = performance.now() - trial.startedAt;
     appendPathSample(trial.rawPath, point, elapsed);
@@ -407,6 +463,7 @@
     if (!state.pointerDown || !state.currentTrial || state.currentTrial.pointerId !== event.pointerId) return;
     event.preventDefault();
     state.rawPointer = pointFromEvent(event);
+    activatePerturbationIfNeeded(state.rawPointer, state.currentTrial);
     updateVirtualPointer();
     appendPathSample(state.currentTrial.rawPath, state.rawPointer, performance.now() - state.currentTrial.startedAt);
     state.pointerDown = false;
@@ -433,6 +490,22 @@
     const px = point.x - START.x;
     const py = point.y - START.y;
     return clamp((px * dx + py * dy) / (trial.amplitude * trial.amplitude), 0, 1.5);
+  }
+
+  function activatePerturbationIfNeeded(point, trial) {
+    if (trial.phaseKey !== "adaptation" || trial.transitionOccurred) return;
+    if (movementProgress(point, trial) < state.settings.transitionPoint) return;
+
+    trial.transitionOccurred = true;
+    trial.transitionAt = performance.now();
+    trial.transitionRawX = point.x;
+    trial.transitionRawY = point.y;
+    trial.transitionVirtualX = point.x;
+    trial.transitionVirtualY = point.y;
+    trial.perturbationOriginRaw = { ...point };
+    trial.perturbationOriginVirtual = { ...point };
+    state.virtualPointer = { ...point };
+    ui.arenaHint.textContent = `摂動状態（${conditionLabel(trial.perturbationMode, trial.perturbationAngleDeg)}）です。画面上のカーソルを目標へ合わせてください。`;
   }
 
   function appendPathSample(path, point, elapsed) {
@@ -580,16 +653,42 @@
     return (difference * 180) / Math.PI;
   }
 
+  function rotateVector(vector, angleRadians) {
+    const cosine = Math.cos(angleRadians);
+    const sine = Math.sin(angleRadians);
+    return {
+      x: vector.x * cosine - vector.y * sine,
+      y: vector.x * sine + vector.y * cosine,
+    };
+  }
+
   function updateVirtualPointer() {
     const trial = state.currentTrial;
     if (!state.rawPointer || !trial) return;
-    if (trial.phaseKey === "adaptation" && trial.transitionOccurred) {
-      const response = 0.42 - state.settings.lagStrength * 0.32;
-      state.virtualPointer.x = lerp(state.virtualPointer.x, state.rawPointer.x, response);
-      state.virtualPointer.y = lerp(state.virtualPointer.y, state.rawPointer.y, response);
-    } else {
+    if (trial.phaseKey !== "adaptation" || !trial.transitionOccurred) {
       state.virtualPointer = { ...state.rawPointer };
+      return;
     }
+
+    if (trial.perturbationMode === "reverse" || trial.perturbationMode === "rotate") {
+      const originRaw = trial.perturbationOriginRaw || state.rawPointer;
+      const originVirtual = trial.perturbationOriginVirtual || originRaw;
+      const displacement = {
+        x: state.rawPointer.x - originRaw.x,
+        y: state.rawPointer.y - originRaw.y,
+      };
+      const angleDegrees = trial.perturbationAngleDeg ?? 0;
+      const rotated = rotateVector(displacement, (angleDegrees * Math.PI) / 180);
+      state.virtualPointer = {
+        x: clamp(originVirtual.x + rotated.x, 0, canvas.width),
+        y: clamp(originVirtual.y + rotated.y, 0, canvas.height),
+      };
+      return;
+    }
+
+    const response = 0.42 - state.settings.lagStrength * 0.32;
+    state.virtualPointer.x = lerp(state.virtualPointer.x, state.rawPointer.x, response);
+    state.virtualPointer.y = lerp(state.virtualPointer.y, state.rawPointer.y, response);
   }
 
   function mean(rows, key) {
@@ -642,7 +741,13 @@
         <td>${Number.isFinite(result.fittsSlope) ? `${result.fittsSlope.toFixed(1)} ms/bit` : "—"}</td>
       </tr>
     `).join("");
-    ui.resultSummary.textContent = `成功率 ${formatPercent(successRate(state.trials))} / ${state.trials.length}試行`;
+    const condition = state.settings
+      ? conditionLabel(
+        state.settings.perturbationMode,
+        effectivePerturbationAngle(state.settings.perturbationMode, state.settings.rotationAngle),
+      )
+      : "—";
+    ui.resultSummary.textContent = `条件：${condition} / 成功率 ${formatPercent(successRate(state.trials))} / ${state.trials.length}試行`;
   }
 
   function csvCell(value) {
@@ -670,9 +775,10 @@
   function downloadCsv() {
     const columns = [
       "sessionTrial", "phaseIndex", "phaseKey", "phaseLabel", "blockIndex", "trialIndex",
-      "targetX", "targetY", "targetWidth", "amplitude", "fittsId", "targetAngle",
+      "perturbationMode", "perturbationAngleDeg", "targetX", "targetY", "targetWidth", "amplitude", "fittsId", "targetAngle",
       "movementTime", "transitionOccurred", "transitionTime", "rawEndX", "rawEndY",
       "virtualEndX", "virtualEndY", "rawEndpointError", "endpointError", "success",
+      "transitionRawX", "transitionRawY", "transitionVirtualX", "transitionVirtualY",
       "pathLengthRaw", "pathLengthVirtual", "corrections", "initialAngleError", "rawPath", "virtualPath",
     ];
     const lines = [columns.join(",")];
@@ -689,7 +795,7 @@
     const payload = {
       metadata: {
         app: "mouse-mismatch-experiment",
-        version: "0.1.0",
+        version: "0.2.0",
         participantId: state.settings?.participantId || null,
         sessionStartedAt: state.sessionStartedAt,
         sessionFinishedAt: state.sessionFinishedAt,
@@ -842,6 +948,9 @@
   });
   ui.csvButton.addEventListener("click", downloadCsv);
   ui.jsonButton.addEventListener("click", downloadJson);
+  ui.perturbationMode.addEventListener("input", updateSettingReadouts);
+  ui.perturbationMode.addEventListener("change", updateSettingReadouts);
+  ui.rotationAngle.addEventListener("input", updateSettingReadouts);
   ui.lagStrength.addEventListener("input", updateSettingReadouts);
   ui.transitionPoint.addEventListener("input", updateSettingReadouts);
 

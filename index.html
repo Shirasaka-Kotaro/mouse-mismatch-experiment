@@ -12,7 +12,7 @@
         <div>
           <p class="eyebrow">MOUSE MOTOR CONTROL LAB / PILOT 01</p>
           <h1>動作途中の仮想身体変化</h1>
-          <p class="subtitle">マウス操作の途中でカーソルが「重くなる」条件への適応を測定します。</p>
+          <p class="subtitle">マウス操作の途中で、カーソルの重さ・逆方向・回転による視覚運動的不一致への適応を測定します。</p>
         </div>
         <div id="sessionBadge" class="status-badge" data-state="idle">準備中</div>
       </header>
@@ -39,7 +39,24 @@
               <option value="24">24（多試行）</option>
             </select>
 
-            <div class="range-field">
+            <label class="field-label" for="perturbationMode">適応フェーズの摂動条件</label>
+            <select id="perturbationMode" class="select-input">
+              <option value="heavy" selected>重い：遅れて追従</option>
+              <option value="reverse">逆方向：180°反転</option>
+              <option value="rotate">回転：指定角度だけずれる</option>
+            </select>
+            <p id="perturbationHelp" class="field-help">動作途中から、カーソルの追従を弱めます。</p>
+
+            <div id="rotationAngleField" class="range-field" hidden>
+              <div class="range-header">
+                <label class="field-label" for="rotationAngle">回転角</label>
+                <output id="rotationAngleValue" for="rotationAngle">+45°（時計回り）</output>
+              </div>
+              <input id="rotationAngle" class="range-input" type="range" min="-135" max="135" step="15" value="45" />
+              <p class="field-help">正の値は時計回り、負の値は反時計回りです。</p>
+            </div>
+
+            <div id="lagStrengthField" class="range-field">
               <div class="range-header">
                 <label class="field-label" for="lagStrength">カーソルの重さ</label>
                 <output id="lagStrengthValue" for="lagStrength">70%</output>
@@ -92,7 +109,7 @@
               <li>左クリックを押したまま、黄色の目標へ移動します。</li>
               <li>目標内でボタンを離します。</li>
             </ol>
-            <p class="callout">適応フェーズでは、動作の途中からカーソルの追従が遅くなります。画面上の小さなカーソルだけを見て操作してください。</p>
+            <p class="callout">適応フェーズでは、動作の途中から設定した摂動が始まります。画面上の小さなカーソルだけを見て操作してください。</p>
           </section>
         </aside>
 
