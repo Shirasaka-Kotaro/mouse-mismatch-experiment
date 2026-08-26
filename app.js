@@ -7,15 +7,21 @@
 
   const ui = {
     participantId: document.getElementById("participantId"),
+    deviceType: document.getElementById("deviceType"),
+    deviceChip: document.getElementById("deviceChip"),
     trialsPerBlock: document.getElementById("trialsPerBlock"),
     perturbationMode: document.getElementById("perturbationMode"),
     perturbationHelp: document.getElementById("perturbationHelp"),
+    perturbationTiming: document.getElementById("perturbationTiming"),
+    timingHelp: document.getElementById("timingHelp"),
+    protocolCallout: document.getElementById("protocolCallout"),
     rotationAngleField: document.getElementById("rotationAngleField"),
     rotationAngle: document.getElementById("rotationAngle"),
     rotationAngleValue: document.getElementById("rotationAngleValue"),
     lagStrengthField: document.getElementById("lagStrengthField"),
     lagStrength: document.getElementById("lagStrength"),
     lagStrengthValue: document.getElementById("lagStrengthValue"),
+    transitionPointField: document.getElementById("transitionPointField"),
     transitionPoint: document.getElementById("transitionPoint"),
     transitionPointValue: document.getElementById("transitionPointValue"),
     showBoundary: document.getElementById("showBoundary"),
@@ -42,6 +48,25 @@
     resultsPanel: document.getElementById("resultsPanel"),
     resultsBody: document.getElementById("resultsBody"),
     resultSummary: document.getElementById("resultSummary"),
+    analysisPanel: document.getElementById("analysisPanel"),
+    mouseCsvInput: document.getElementById("mouseCsvInput"),
+    pencilCsvInput: document.getElementById("pencilCsvInput"),
+    mouseFileName: document.getElementById("mouseFileName"),
+    pencilFileName: document.getElementById("pencilFileName"),
+    analysisPhase: document.getElementById("analysisPhase"),
+    analysisMetric: document.getElementById("analysisMetric"),
+    analysisWindow: document.getElementById("analysisWindow"),
+    drawAnalysisButton: document.getElementById("drawAnalysisButton"),
+    clearAnalysisButton: document.getElementById("clearAnalysisButton"),
+    analysisStatus: document.getElementById("analysisStatus"),
+    adaptationChart: document.getElementById("adaptationChart"),
+    analysisSummaryBody: document.getElementById("analysisSummaryBody"),
+    trajectorySource: document.getElementById("trajectorySource"),
+    trajectoryPhase: document.getElementById("trajectoryPhase"),
+    trajectoryTrial: document.getElementById("trajectoryTrial"),
+    drawTrajectoryButton: document.getElementById("drawTrajectoryButton"),
+    trajectoryStatus: document.getElementById("trajectoryStatus"),
+    trajectoryChart: document.getElementById("trajectoryChart"),
   };
 
   const PHASES = [
@@ -64,6 +89,27 @@
     reverse: "動作途中から、マウスの移動方向と反対方向へカーソルが進みます。",
     rotate: "動作途中から、マウスの移動方向を指定角度だけ回転させます。",
   };
+  const DEVICE_LABELS = {
+    mouse: "PCマウス",
+    pencil: "iPadタッチペン",
+  };
+  const PERTURBATION_TIMING_HELP = {
+    "mid-trial": "動作途中から変化させ、1回の動作中のオンライン修正を測定します。",
+    "trial-start": "各適応試行の開始時から変化させ、試行を重ねた適応曲線を測定します。",
+  };
+  const PERTURBATION_TIMING_CALLOUTS = {
+    "mid-trial": "適応フェーズでは、動作の途中から設定した摂動が始まります。画面上の小さなカーソルだけを見て操作してください。",
+    "trial-start": "適応フェーズでは、各試行の開始時から設定した摂動が始まります。画面上の小さなカーソルだけを見て操作してください。",
+  };
+  const ANALYSIS_METRICS = {
+    endpointNormalized: { label: "正規化終点誤差", unit: "ターゲット幅単位" },
+    directionError: { label: "方向誤差", unit: "°" },
+    movementTime: { label: "移動時間", unit: "ms" },
+    pathLengthRatio: { label: "実軌道長比", unit: "倍" },
+    corrections: { label: "修正回数", unit: "回" },
+    successRate: { label: "成功率", unit: "%" },
+    cursorMouseGap: { label: "マウス–カーソル距離", unit: "px" },
+  };
 
   const state = {
     sessionState: "idle",
@@ -84,6 +130,10 @@
     sessionFinishedAt: null,
     advanceTimer: null,
     overlayAction: null,
+    analysisDatasets: {
+      mouse: null,
+      pencil: null,
+    },
   };
 
   function clamp(value, min, max) {
@@ -156,8 +206,10 @@
   function readSettings() {
     return {
       participantId: ui.participantId.value.trim() || "P001",
+      deviceType: ui.deviceType.value,
       trialsPerBlock: Number(ui.trialsPerBlock.value),
       perturbationMode: ui.perturbationMode.value,
+      perturbationTiming: ui.perturbationTiming.value,
       rotationAngle: Number(ui.rotationAngle.value),
       lagStrength: Number(ui.lagStrength.value) / 100,
       transitionPoint: Number(ui.transitionPoint.value) / 100,
@@ -190,8 +242,10 @@
 
     [
       ui.participantId,
+      ui.deviceType,
       ui.trialsPerBlock,
       ui.perturbationMode,
+      ui.perturbationTiming,
       ui.rotationAngle,
       ui.lagStrength,
       ui.transitionPoint,
@@ -208,13 +262,19 @@
   }
 
   function updateSettingReadouts() {
+    const device = ui.deviceType.value;
+    ui.deviceChip.textContent = device === "pencil" ? "PENCIL" : "MOUSE";
     ui.lagStrengthValue.textContent = `${ui.lagStrength.value}%`;
     ui.transitionPointValue.textContent = `${ui.transitionPoint.value}%`;
     ui.rotationAngleValue.textContent = formatRotationAngle(Number(ui.rotationAngle.value));
     const mode = ui.perturbationMode.value;
+    const timing = ui.perturbationTiming.value;
     ui.perturbationHelp.textContent = PERTURBATION_HELP[mode] || PERTURBATION_HELP.heavy;
+    ui.timingHelp.textContent = PERTURBATION_TIMING_HELP[timing] || PERTURBATION_TIMING_HELP["mid-trial"];
+    ui.protocolCallout.textContent = PERTURBATION_TIMING_CALLOUTS[timing] || PERTURBATION_TIMING_CALLOUTS["mid-trial"];
     ui.lagStrengthField.hidden = mode !== "heavy";
     ui.rotationAngleField.hidden = mode !== "rotate";
+    ui.transitionPointField.hidden = timing !== "mid-trial";
   }
 
   function updateProgress() {
@@ -289,8 +349,11 @@
       amplitude,
       fittsId: id,
       targetAngle: angle,
+      deviceType: state.settings.deviceType,
+      deviceLabel: DEVICE_LABELS[state.settings.deviceType] || state.settings.deviceType,
       perturbationMode: state.settings.perturbationMode,
       perturbationAngleDeg: effectivePerturbationAngle(state.settings.perturbationMode, state.settings.rotationAngle),
+      perturbationTiming: state.settings.perturbationTiming,
       startedAt: null,
       endedAt: null,
       transitionOccurred: false,
@@ -334,9 +397,12 @@
   }
 
   function showIntro() {
+    const deviceLabel = DEVICE_LABELS[ui.deviceType.value] || DEVICE_LABELS.mouse;
+    const timing = ui.perturbationTiming.value;
+    const timingLabel = timing === "trial-start" ? "試行開始からの摂動" : "動作途中の摂動";
     showOverlay(
-      "マウス実験を開始してください",
-      "通常状態、動作途中の摂動、後効果の順に測定します。参加者IDと設定を確認してから開始してください。",
+      `${deviceLabel}実験を開始してください`,
+      `通常状態、${timingLabel}、後効果の順に測定します。参加者IDと設定を確認してから開始してください。`,
       "実験を開始",
       startSession,
     );
@@ -434,6 +500,9 @@
     state.currentTrial.startedAt = performance.now();
     state.currentTrial.rawPath = [{ t: 0, x: point.x, y: point.y }];
     state.currentTrial.virtualPath = [{ t: 0, x: point.x, y: point.y }];
+    if (state.currentTrial.phaseKey === "adaptation" && state.settings.perturbationTiming === "trial-start") {
+      activatePerturbationAt(point, state.currentTrial);
+    }
     canvas.setPointerCapture(event.pointerId);
     updateControls();
     updateReadout();
@@ -493,9 +562,14 @@
   }
 
   function activatePerturbationIfNeeded(point, trial) {
-    if (trial.phaseKey !== "adaptation" || trial.transitionOccurred) return;
+    if (trial.phaseKey !== "adaptation" || trial.transitionOccurred || trial.perturbationTiming === "trial-start") return;
     if (movementProgress(point, trial) < state.settings.transitionPoint) return;
 
+    activatePerturbationAt(point, trial);
+  }
+
+  function activatePerturbationAt(point, trial) {
+    if (trial.transitionOccurred) return;
     trial.transitionOccurred = true;
     trial.transitionAt = performance.now();
     trial.transitionRawX = point.x;
@@ -534,8 +608,12 @@
     trial.success = trial.endpointError <= trial.targetWidth / 2;
     trial.pathLengthRaw = calculatePathLength(trial.rawPath);
     trial.pathLengthVirtual = calculatePathLength(trial.virtualPath);
+    trial.pathLengthRatioRaw = trial.amplitude > 0 ? trial.pathLengthRaw / trial.amplitude : NaN;
+    trial.pathLengthRatioVirtual = trial.amplitude > 0 ? trial.pathLengthVirtual / trial.amplitude : NaN;
     trial.corrections = calculateCorrections(trial.virtualPath);
     trial.initialAngleError = calculateInitialAngleError(trial.rawPath, trial.targetAngle);
+    trial.postTransitionAngleError = calculatePostTransitionAngleError(trial.rawPath, trial);
+    trial.meanCursorMouseGap = calculateMeanCursorMouseGap(trial.rawPath, trial.virtualPath);
     trial.transitionTime = trial.transitionAt ? trial.transitionAt - trial.startedAt : null;
 
     state.trials.push({ ...trial });
@@ -643,14 +721,60 @@
   }
 
   function calculateInitialAngleError(path, targetAngle) {
+    return calculateAngleError(path, START, targetAngle, 0);
+  }
+
+  function calculateAngleError(path, origin, targetAngle, minimumTime = 0) {
     if (path.length < 2) return NaN;
-    const first = path.find((point) => distance(point, START) >= 8);
+    const first = path.find((point) => point.t >= minimumTime && distance(point, origin) >= 8);
     if (!first) return NaN;
-    const angle = Math.atan2(first.y - START.y, first.x - START.x);
+    const angle = Math.atan2(first.y - origin.y, first.x - origin.x);
     let difference = angle - targetAngle;
     while (difference > Math.PI) difference -= Math.PI * 2;
     while (difference < -Math.PI) difference += Math.PI * 2;
     return (difference * 180) / Math.PI;
+  }
+
+  function calculatePostTransitionAngleError(path, trial) {
+    if (!trial.transitionOccurred || !trial.transitionAt || !trial.startedAt
+      || !Number.isFinite(trial.transitionRawX) || !Number.isFinite(trial.transitionRawY)) {
+      return NaN;
+    }
+    const transitionTime = trial.transitionAt - trial.startedAt;
+    return calculateAngleError(
+      path,
+      { x: trial.transitionRawX, y: trial.transitionRawY },
+      trial.targetAngle,
+      transitionTime,
+    );
+  }
+
+  function interpolatePathPoint(path, time) {
+    if (!path.length) return null;
+    if (time <= path[0].t) return path[0];
+    const last = path[path.length - 1];
+    if (time >= last.t) return last;
+    for (let index = 1; index < path.length; index += 1) {
+      const next = path[index];
+      if (next.t < time) continue;
+      const previous = path[index - 1];
+      const duration = next.t - previous.t;
+      const amount = duration > 0 ? (time - previous.t) / duration : 0;
+      return {
+        x: lerp(previous.x, next.x, amount),
+        y: lerp(previous.y, next.y, amount),
+      };
+    }
+    return last;
+  }
+
+  function calculateMeanCursorMouseGap(rawPath, virtualPath) {
+    if (!rawPath.length || !virtualPath.length) return NaN;
+    const gaps = rawPath.map((point) => {
+      const virtual = interpolatePathPoint(virtualPath, point.t);
+      return virtual ? distance(point, virtual) : NaN;
+    }).filter(Number.isFinite);
+    return gaps.length ? gaps.reduce((sum, value) => sum + value, 0) / gaps.length : NaN;
   }
 
   function rotateVector(vector, angleRadians) {
@@ -769,17 +893,21 @@
   }
 
   function safeFilename() {
-    return (state.settings?.participantId || "participant").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const participant = (state.settings?.participantId || "participant").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const device = state.settings?.deviceType === "pencil" ? "pencil" : "mouse";
+    return `${participant}_${device}`;
   }
 
   function downloadCsv() {
     const columns = [
-      "sessionTrial", "phaseIndex", "phaseKey", "phaseLabel", "blockIndex", "trialIndex",
+      "sessionTrial", "deviceType", "deviceLabel", "phaseIndex", "phaseKey", "phaseLabel", "blockIndex", "trialIndex",
       "perturbationMode", "perturbationAngleDeg", "targetX", "targetY", "targetWidth", "amplitude", "fittsId", "targetAngle",
+      "perturbationTiming",
       "movementTime", "transitionOccurred", "transitionTime", "rawEndX", "rawEndY",
       "virtualEndX", "virtualEndY", "rawEndpointError", "endpointError", "success",
       "transitionRawX", "transitionRawY", "transitionVirtualX", "transitionVirtualY",
-      "pathLengthRaw", "pathLengthVirtual", "corrections", "initialAngleError", "rawPath", "virtualPath",
+      "pathLengthRaw", "pathLengthVirtual", "pathLengthRatioRaw", "pathLengthRatioVirtual", "corrections",
+      "initialAngleError", "postTransitionAngleError", "meanCursorMouseGap", "rawPath", "virtualPath",
     ];
     const lines = [columns.join(",")];
     state.trials.forEach((trial) => {
@@ -788,14 +916,14 @@
         return csvCell(value);
       }).join(","));
     });
-    downloadBlob(`\uFEFF${lines.join("\n")}`, `${safeFilename()}_mouse_mismatch_trials.csv`, "text/csv;charset=utf-8");
+    downloadBlob(`\uFEFF${lines.join("\n")}`, `${safeFilename()}_mismatch_trials.csv`, "text/csv;charset=utf-8");
   }
 
   function downloadJson() {
     const payload = {
       metadata: {
         app: "mouse-mismatch-experiment",
-        version: "0.2.0",
+        version: "0.3.0",
         participantId: state.settings?.participantId || null,
         sessionStartedAt: state.sessionStartedAt,
         sessionFinishedAt: state.sessionFinishedAt,
@@ -805,7 +933,7 @@
       blockResults: getBlockResults(),
       trials: state.trials,
     };
-    downloadBlob(JSON.stringify(payload, null, 2), `${safeFilename()}_mouse_mismatch_session.json`, "application/json;charset=utf-8");
+    downloadBlob(JSON.stringify(payload, null, 2), `${safeFilename()}_mismatch_session.json`, "application/json;charset=utf-8");
   }
 
   function drawArena() {
@@ -843,7 +971,7 @@
       const targetRadius = trial.targetWidth / 2;
       const targetColor = phase.key === "adaptation" ? "#f1a94a" : "#f2bf4b";
 
-      if (state.settings?.showBoundary && phase.key === "adaptation") {
+      if (state.settings?.showBoundary && phase.key === "adaptation" && state.settings.perturbationTiming === "mid-trial") {
         ctx.save();
         ctx.setLineDash([6, 8]);
         ctx.strokeStyle = "rgba(242, 191, 75, 0.62)";
@@ -937,6 +1065,695 @@
     window.requestAnimationFrame(animationFrame);
   }
 
+  function parseNumber(value) {
+    if (value === null || value === undefined || String(value).trim() === "") return NaN;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : NaN;
+  }
+
+  function parseBoolean(value) {
+    return ["true", "1", "yes", "成功"].includes(String(value).trim().toLowerCase());
+  }
+
+  function parsePath(value) {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed)
+        ? parsed.filter((point) => Number.isFinite(Number(point.x)) && Number.isFinite(Number(point.y)))
+          .map((point) => ({
+            t: parseNumber(point.t),
+            x: parseNumber(point.x),
+            y: parseNumber(point.y),
+          }))
+        : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function parseCsvText(text) {
+    const source = String(text || "").replace(/^\uFEFF/, "");
+    const rows = [];
+    let row = [];
+    let cell = [];
+    let inQuotes = false;
+
+    for (let index = 0; index < source.length; index += 1) {
+      const character = source[index];
+      if (inQuotes) {
+        if (character === '"') {
+          if (source[index + 1] === '"') {
+            cell.push('"');
+            index += 1;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          cell.push(character);
+        }
+      } else if (character === '"' && cell.length === 0) {
+        inQuotes = true;
+      } else if (character === ",") {
+        row.push(cell.join(""));
+        cell = [];
+      } else if (character === "\n") {
+        row.push(cell.join(""));
+        if (row.some((value) => value !== "")) rows.push(row);
+        row = [];
+        cell = [];
+      } else if (character !== "\r") {
+        cell.push(character);
+      }
+    }
+
+    row.push(cell.join(""));
+    if (row.some((value) => value !== "")) rows.push(row);
+    if (!rows.length) return [];
+
+    const headers = rows.shift().map((header, index) => header.trim() || `column${index}`);
+    return rows.map((values) => headers.reduce((record, header, index) => {
+      record[header] = values[index] ?? "";
+      return record;
+    }, {}));
+  }
+
+  function inferPhaseKey(row) {
+    if (row.phaseKey) return row.phaseKey;
+    const label = String(row.phaseLabel || "");
+    if (label.includes("ベース") || label.includes("baseline")) return "baseline";
+    if (label.includes("後") || label.includes("washout") || label.includes("効果")) return "washout";
+    if (label.includes("適応") || label.includes("摂動") || label.includes("adaptation")) return "adaptation";
+    return "unknown";
+  }
+
+  function phaseLabelForKey(phaseKey) {
+    const phase = PHASES.find((candidate) => candidate.key === phaseKey);
+    return phase?.label || (phaseKey === "all" ? "全フェーズ" : "不明なフェーズ");
+  }
+
+  function lastPathPoint(path) {
+    return path.length ? path[path.length - 1] : null;
+  }
+
+  function normalizeAnalysisRow(rawRow, datasetKey, rowIndex) {
+    const rawPath = parsePath(rawRow.rawPath);
+    const virtualPath = parsePath(rawRow.virtualPath);
+    const rawEnd = {
+      x: parseNumber(rawRow.rawEndX),
+      y: parseNumber(rawRow.rawEndY),
+    };
+    const virtualEnd = {
+      x: parseNumber(rawRow.virtualEndX),
+      y: parseNumber(rawRow.virtualEndY),
+    };
+    const rawLast = lastPathPoint(rawPath);
+    const virtualLast = lastPathPoint(virtualPath);
+    if (!Number.isFinite(rawEnd.x) && rawLast) rawEnd.x = rawLast.x;
+    if (!Number.isFinite(rawEnd.y) && rawLast) rawEnd.y = rawLast.y;
+    if (!Number.isFinite(virtualEnd.x) && virtualLast) virtualEnd.x = virtualLast.x;
+    if (!Number.isFinite(virtualEnd.y) && virtualLast) virtualEnd.y = virtualLast.y;
+
+    const target = {
+      x: parseNumber(rawRow.targetX),
+      y: parseNumber(rawRow.targetY),
+    };
+    const targetWidth = parseNumber(rawRow.targetWidth);
+    const amplitude = parseNumber(rawRow.amplitude);
+    const endpointError = Number.isFinite(parseNumber(rawRow.endpointError))
+      ? parseNumber(rawRow.endpointError)
+      : Number.isFinite(virtualEnd.x) && Number.isFinite(virtualEnd.y) && Number.isFinite(target.x) && Number.isFinite(target.y)
+        ? distance(virtualEnd, target)
+        : NaN;
+    const rawEndpointError = Number.isFinite(parseNumber(rawRow.rawEndpointError))
+      ? parseNumber(rawRow.rawEndpointError)
+      : Number.isFinite(rawEnd.x) && Number.isFinite(rawEnd.y) && Number.isFinite(target.x) && Number.isFinite(target.y)
+        ? distance(rawEnd, target)
+        : NaN;
+    const pathLengthRaw = Number.isFinite(parseNumber(rawRow.pathLengthRaw))
+      ? parseNumber(rawRow.pathLengthRaw)
+      : calculatePathLength(rawPath);
+    const pathLengthVirtual = Number.isFinite(parseNumber(rawRow.pathLengthVirtual))
+      ? parseNumber(rawRow.pathLengthVirtual)
+      : calculatePathLength(virtualPath);
+    const meanCursorMouseGap = Number.isFinite(parseNumber(rawRow.meanCursorMouseGap))
+      ? parseNumber(rawRow.meanCursorMouseGap)
+      : calculateMeanCursorMouseGap(rawPath, virtualPath);
+    const deviceType = rawRow.deviceType || datasetKey;
+
+    return {
+      ...rawRow,
+      rowIndex,
+      sessionTrial: Number.isFinite(parseNumber(rawRow.sessionTrial)) ? parseNumber(rawRow.sessionTrial) : rowIndex + 1,
+      phaseKey: inferPhaseKey(rawRow),
+      phaseLabel: rawRow.phaseLabel || phaseLabelForKey(inferPhaseKey(rawRow)),
+      blockIndex: Number.isFinite(parseNumber(rawRow.blockIndex)) ? parseNumber(rawRow.blockIndex) : 0,
+      trialIndex: Number.isFinite(parseNumber(rawRow.trialIndex)) ? parseNumber(rawRow.trialIndex) : rowIndex,
+      perturbationMode: rawRow.perturbationMode || "unknown",
+      deviceType,
+      deviceLabel: rawRow.deviceLabel || DEVICE_LABELS[deviceType] || (datasetKey === "pencil" ? DEVICE_LABELS.pencil : DEVICE_LABELS.mouse),
+      targetX: target.x,
+      targetY: target.y,
+      targetWidth,
+      amplitude,
+      movementTime: parseNumber(rawRow.movementTime),
+      endpointError,
+      rawEndpointError,
+      success: typeof rawRow.success === "boolean" ? rawRow.success : parseBoolean(rawRow.success),
+      pathLengthRaw,
+      pathLengthVirtual,
+      pathLengthRatioRaw: Number.isFinite(parseNumber(rawRow.pathLengthRatioRaw))
+        ? parseNumber(rawRow.pathLengthRatioRaw)
+        : amplitude > 0 ? pathLengthRaw / amplitude : NaN,
+      pathLengthRatioVirtual: Number.isFinite(parseNumber(rawRow.pathLengthRatioVirtual))
+        ? parseNumber(rawRow.pathLengthRatioVirtual)
+        : amplitude > 0 ? pathLengthVirtual / amplitude : NaN,
+      corrections: parseNumber(rawRow.corrections),
+      initialAngleError: parseNumber(rawRow.initialAngleError),
+      postTransitionAngleError: parseNumber(rawRow.postTransitionAngleError),
+      meanCursorMouseGap,
+      rawPath,
+      virtualPath,
+      rawEnd,
+      virtualEnd,
+    };
+  }
+
+  function parseAnalysisDataset(text, datasetKey, fileName) {
+    const rows = parseCsvText(text)
+      .map((row, index) => normalizeAnalysisRow(row, datasetKey, index))
+      .sort((a, b) => a.sessionTrial - b.sessionTrial);
+    return {
+      key: datasetKey,
+      label: datasetKey === "pencil" ? "タッチペン" : "マウス",
+      fileName,
+      rows,
+    };
+  }
+
+  function analysisDatasets() {
+    return [state.analysisDatasets.mouse, state.analysisDatasets.pencil].filter(Boolean);
+  }
+
+  function analysisRowsForPhase(dataset, phaseKey) {
+    if (!dataset) return [];
+    if (phaseKey === "all") return [...dataset.rows];
+    return dataset.rows.filter((row) => row.phaseKey === phaseKey);
+  }
+
+  function analysisMetricValue(row, metric) {
+    switch (metric) {
+      case "endpointNormalized":
+        return Number.isFinite(row.endpointError) && row.targetWidth > 0 ? row.endpointError / row.targetWidth : NaN;
+      case "directionError":
+        return Number.isFinite(row.postTransitionAngleError) ? row.postTransitionAngleError : row.initialAngleError;
+      case "movementTime":
+        return row.movementTime;
+      case "pathLengthRatio":
+        return row.pathLengthRatioRaw;
+      case "corrections":
+        return row.corrections;
+      case "successRate":
+        return typeof row.success === "boolean" ? (row.success ? 1 : 0) : NaN;
+      case "cursorMouseGap":
+        return row.meanCursorMouseGap;
+      default:
+        return NaN;
+    }
+  }
+
+  function centeredMovingAverage(values, windowSize) {
+    const half = Math.floor(windowSize / 2);
+    return values.map((value, index) => {
+      if (!Number.isFinite(value)) return NaN;
+      const start = Math.max(0, index - half);
+      const end = Math.min(values.length - 1, index + half);
+      const valid = values.slice(start, end + 1).filter(Number.isFinite);
+      return valid.length ? valid.reduce((sum, item) => sum + item, 0) / valid.length : NaN;
+    });
+  }
+
+  function buildAnalysisSeries(dataset, phaseKey, metric, windowSize) {
+    const rows = analysisRowsForPhase(dataset, phaseKey);
+    const values = rows.map((row) => analysisMetricValue(row, metric));
+    const smoothed = centeredMovingAverage(values, windowSize);
+    return {
+      key: dataset.key,
+      label: dataset.label,
+      points: values.map((value, index) => ({
+        x: index + 1,
+        rawValue: value,
+        smoothValue: smoothed[index],
+      })),
+      rows,
+    };
+  }
+
+  function formatMetricValue(value, metric, digits = 2) {
+    if (!Number.isFinite(value)) return "—";
+    if (metric === "successRate") return `${Math.round(value * 100)}%`;
+    return value.toFixed(digits);
+  }
+
+  function setAnalysisStatus(message, status = "") {
+    ui.analysisStatus.textContent = message;
+    ui.analysisStatus.dataset.state = status;
+  }
+
+  function analysisPalette(key) {
+    return key === "pencil" ? "#e8774d" : "#3154d8";
+  }
+
+  function chartTextFont() {
+    return '12px "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif';
+  }
+
+  function drawEmptyChart(canvasElement, title, message, dark = false) {
+    if (!canvasElement) return;
+    const context = canvasElement.getContext("2d");
+    const width = canvasElement.width;
+    const height = canvasElement.height;
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = dark ? "#172334" : "#fbfcfe";
+    context.fillRect(0, 0, width, height);
+    context.font = chartTextFont();
+    context.textAlign = "center";
+    context.fillStyle = dark ? "#f8fbff" : "#142030";
+    context.fillText(title, width / 2, height / 2 - 16);
+    context.fillStyle = dark ? "#aebdce" : "#657386";
+    context.fillText(message, width / 2, height / 2 + 14);
+    context.textAlign = "left";
+  }
+
+  function drawAdaptationChart(series, metric, phaseKey, windowSize) {
+    const canvasElement = ui.adaptationChart;
+    const context = canvasElement.getContext("2d");
+    const width = canvasElement.width;
+    const height = canvasElement.height;
+    const margin = { top: 78, right: 35, bottom: 78, left: 105 };
+    const plotWidth = width - margin.left - margin.right;
+    const plotHeight = height - margin.top - margin.bottom;
+    const metricInfo = ANALYSIS_METRICS[metric] || ANALYSIS_METRICS.endpointNormalized;
+    const allValues = series.flatMap((item) => item.points.map((point) => point.rawValue)).filter(Number.isFinite);
+    let minValue = allValues.length ? Math.min(...allValues) : 0;
+    let maxValue = allValues.length ? Math.max(...allValues) : 1;
+    if (metric === "successRate") {
+      minValue = 0;
+      maxValue = 1;
+    } else {
+      const spread = maxValue - minValue;
+      const padding = spread > 0 ? spread * 0.12 : Math.max(Math.abs(maxValue) * 0.12, 1);
+      minValue -= padding;
+      maxValue += padding;
+      if (metric === "directionError") {
+        minValue = Math.min(minValue, 0);
+        maxValue = Math.max(maxValue, 0);
+      }
+    }
+    if (minValue === maxValue) maxValue = minValue + 1;
+
+    const maxTrial = Math.max(1, ...series.map((item) => item.points.length));
+    const xFor = (value) => maxTrial > 1
+      ? margin.left + ((value - 1) / (maxTrial - 1)) * plotWidth
+      : margin.left + plotWidth / 2;
+    const yFor = (value) => margin.top + ((maxValue - value) / (maxValue - minValue)) * plotHeight;
+
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.font = chartTextFont();
+    context.textAlign = "left";
+    context.fillStyle = "#142030";
+    context.font = '700 18px "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif';
+    context.fillText(`運動適応曲線：${metricInfo.label}`, margin.left, 30);
+    context.font = chartTextFont();
+    context.fillStyle = "#657386";
+    context.fillText(`フェーズ：${phaseLabelForKey(phaseKey)} / 移動平均：${windowSize === 1 ? "なし" : `${windowSize}試行`}`, margin.left, 52);
+
+    context.strokeStyle = "#e5eaf0";
+    context.lineWidth = 1;
+    context.fillStyle = "#657386";
+    context.textAlign = "right";
+    for (let index = 0; index <= 5; index += 1) {
+      const value = maxValue - ((maxValue - minValue) * index) / 5;
+      const y = margin.top + (plotHeight * index) / 5;
+      context.beginPath();
+      context.moveTo(margin.left, y);
+      context.lineTo(width - margin.right, y);
+      context.stroke();
+      context.fillText(formatMetricValue(value, metric, metric === "successRate" ? 0 : 2), margin.left - 11, y + 4);
+    }
+
+    const tickCount = Math.min(6, maxTrial);
+    context.textAlign = "center";
+    for (let index = 0; index < tickCount; index += 1) {
+      const value = tickCount === 1 ? 1 : 1 + Math.round((maxTrial - 1) * index / (tickCount - 1));
+      const x = xFor(value);
+      context.strokeStyle = "#eef1f4";
+      context.beginPath();
+      context.moveTo(x, margin.top);
+      context.lineTo(x, height - margin.bottom);
+      context.stroke();
+      context.fillStyle = "#657386";
+      context.fillText(String(value), x, height - margin.bottom + 22);
+    }
+
+    context.strokeStyle = "#9eacba";
+    context.lineWidth = 1.2;
+    context.beginPath();
+    context.moveTo(margin.left, margin.top);
+    context.lineTo(margin.left, height - margin.bottom);
+    context.lineTo(width - margin.right, height - margin.bottom);
+    context.stroke();
+
+    context.save();
+    context.translate(22, margin.top + plotHeight / 2);
+    context.rotate(-Math.PI / 2);
+    context.fillStyle = "#657386";
+    context.textAlign = "center";
+    context.fillText(`${metricInfo.label}（${metricInfo.unit}）`, 0, 0);
+    context.restore();
+    context.textAlign = "center";
+    context.fillStyle = "#657386";
+    context.fillText("試行回数（フェーズ内）", margin.left + plotWidth / 2, height - 20);
+
+    series.forEach((item) => {
+      const color = analysisPalette(item.key);
+      context.fillStyle = color;
+      context.globalAlpha = 0.22;
+      item.points.forEach((point) => {
+        if (!Number.isFinite(point.rawValue)) return;
+        context.beginPath();
+        context.arc(xFor(point.x), yFor(point.rawValue), 3.2, 0, Math.PI * 2);
+        context.fill();
+      });
+      context.globalAlpha = 1;
+      context.strokeStyle = color;
+      context.lineWidth = 3;
+      context.lineJoin = "round";
+      context.lineCap = "round";
+      context.beginPath();
+      let started = false;
+      item.points.forEach((point) => {
+        if (!Number.isFinite(point.smoothValue)) {
+          started = false;
+          return;
+        }
+        const x = xFor(point.x);
+        const y = yFor(point.smoothValue);
+        if (!started) {
+          context.moveTo(x, y);
+          started = true;
+        } else {
+          context.lineTo(x, y);
+        }
+      });
+      context.stroke();
+    });
+
+    let legendX = width - margin.right;
+    context.font = chartTextFont();
+    context.textAlign = "right";
+    series.slice().reverse().forEach((item) => {
+      const label = item.label;
+      const color = analysisPalette(item.key);
+      const textWidth = context.measureText(label).width;
+      legendX -= textWidth;
+      context.fillStyle = color;
+      context.fillRect(legendX - 23, 22, 17, 4);
+      context.fillStyle = "#142030";
+      context.fillText(label, legendX, 28);
+      legendX -= 24;
+    });
+  }
+
+  function renderAnalysisSummary(series, metric) {
+    if (!series.length) {
+      ui.analysisSummaryBody.innerHTML = `<tr><td colspan="5">表示できるデータがありません。</td></tr>`;
+      return;
+    }
+    ui.analysisSummaryBody.innerHTML = series.map((item) => {
+      const values = item.points.map((point) => point.rawValue).filter(Number.isFinite);
+      const split = Math.max(1, Math.ceil(values.length / 2));
+      const early = values.slice(0, Math.min(5, split));
+      const late = values.slice(Math.max(0, values.length - Math.min(5, split)));
+      const average = (items) => items.length ? items.reduce((sum, value) => sum + value, 0) / items.length : NaN;
+      const earlyMean = average(early);
+      const lateMean = average(late);
+      const change = Number.isFinite(earlyMean) && Number.isFinite(lateMean) ? lateMean - earlyMean : NaN;
+      return `
+        <tr>
+          <td>${item.label}</td>
+          <td>${values.length}</td>
+          <td>${formatMetricValue(earlyMean, metric)}</td>
+          <td>${formatMetricValue(lateMean, metric)}</td>
+          <td>${formatMetricValue(change, metric)}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function drawAnalysis() {
+    const datasets = analysisDatasets();
+    if (!datasets.length) {
+      setAnalysisStatus("先にマウスまたはタッチペンのCSVを選択してください。", "error");
+      drawEmptyChart(ui.adaptationChart, "運動適応曲線", "CSVを読み込むとここに表示されます。");
+      ui.analysisSummaryBody.innerHTML = "";
+      return;
+    }
+
+    const phaseKey = ui.analysisPhase.value;
+    const metric = ui.analysisMetric.value;
+    const windowSize = Number(ui.analysisWindow.value);
+    const series = datasets.map((dataset) => buildAnalysisSeries(dataset, phaseKey, metric, windowSize));
+    const validSeries = series.filter((item) => item.points.some((point) => Number.isFinite(point.rawValue)));
+    if (!validSeries.length) {
+      setAnalysisStatus("選択したフェーズと指標では表示できる数値がありません。", "error");
+      drawEmptyChart(ui.adaptationChart, "運動適応曲線", "この条件のデータがありません。");
+      ui.analysisSummaryBody.innerHTML = "";
+      return;
+    }
+
+    drawAdaptationChart(validSeries, metric, phaseKey, windowSize);
+    renderAnalysisSummary(validSeries, metric);
+    const counts = validSeries.map((item) => `${item.label} ${item.points.filter((point) => Number.isFinite(point.rawValue)).length}試行`).join(" / ");
+    setAnalysisStatus(`${ANALYSIS_METRICS[metric].label}を表示しました。${counts}。薄い点は各試行、太い線は移動平均です。`, "success");
+    updateTrajectoryOptions();
+  }
+
+  function updateTrajectoryOptions() {
+    const datasets = analysisDatasets();
+    const availableKeys = datasets.map((dataset) => dataset.key);
+    if (!availableKeys.includes(ui.trajectorySource.value) && availableKeys.length) {
+      ui.trajectorySource.value = availableKeys[0];
+    }
+    const dataset = state.analysisDatasets[ui.trajectorySource.value];
+    const rows = analysisRowsForPhase(dataset, ui.trajectoryPhase.value);
+    ui.trajectoryTrial.innerHTML = "";
+    if (!dataset || !rows.length) {
+      ui.trajectoryTrial.disabled = true;
+      ui.trajectoryTrial.innerHTML = `<option value="">該当する試行がありません</option>`;
+      return;
+    }
+    rows.forEach((row, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = `フェーズ内 ${index + 1}（全体 ${row.sessionTrial}）`;
+      ui.trajectoryTrial.appendChild(option);
+    });
+    ui.trajectoryTrial.disabled = false;
+  }
+
+  function mapTrajectoryPoint(point, transform) {
+    return {
+      x: transform.left + (point.x - transform.minX) * transform.scale + transform.offsetX,
+      y: transform.top + (point.y - transform.minY) * transform.scale + transform.offsetY,
+    };
+  }
+
+  function drawTrajectoryChart(row, dataset, phaseKey, trialNumber) {
+    const canvasElement = ui.trajectoryChart;
+    const context = canvasElement.getContext("2d");
+    const width = canvasElement.width;
+    const height = canvasElement.height;
+    const rawPath = row.rawPath;
+    const virtualPath = row.virtualPath;
+    const start = rawPath[0] || virtualPath[0];
+    const target = { x: row.targetX, y: row.targetY };
+    if (!start || !Number.isFinite(target.x) || !Number.isFinite(target.y) || (!rawPath.length && !virtualPath.length)) {
+      drawEmptyChart(canvasElement, "軌道の比較", "この試行には軌道データがありません。", true);
+      return false;
+    }
+
+    const points = [...rawPath, ...virtualPath, start, target];
+    const minX = Math.min(...points.map((point) => point.x));
+    const maxX = Math.max(...points.map((point) => point.x));
+    const minY = Math.min(...points.map((point) => point.y));
+    const maxY = Math.max(...points.map((point) => point.y));
+    const worldWidth = Math.max(1, maxX - minX);
+    const worldHeight = Math.max(1, maxY - minY);
+    const left = 70;
+    const top = 72;
+    const right = 45;
+    const bottom = 55;
+    const plotWidth = width - left - right;
+    const plotHeight = height - top - bottom;
+    const scale = Math.min(plotWidth / worldWidth, plotHeight / worldHeight) * 0.88;
+    const transform = {
+      left,
+      top,
+      minX,
+      minY,
+      scale,
+      offsetX: (plotWidth - worldWidth * scale) / 2,
+      offsetY: (plotHeight - worldHeight * scale) / 2,
+    };
+    const toCanvas = (point) => mapTrajectoryPoint(point, transform);
+
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = "#172334";
+    context.fillRect(0, 0, width, height);
+    context.font = chartTextFont();
+    context.fillStyle = "#f8fbff";
+    context.font = '700 18px "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif';
+    context.fillText(`軌道比較：${dataset.label} / ${phaseLabelForKey(phaseKey)} / 試行 ${trialNumber}`, 28, 30);
+    context.font = chartTextFont();
+    context.fillStyle = "#aebdce";
+    context.fillText(`終点誤差 ${formatMetricValue(row.endpointError, "endpointNormalized")} px / 成功 ${row.success ? "○" : "×"}`, 28, 52);
+
+    context.strokeStyle = "rgba(174, 189, 206, 0.12)";
+    context.lineWidth = 1;
+    for (let x = left; x <= width - right; x += 60) {
+      context.beginPath();
+      context.moveTo(x, top);
+      context.lineTo(x, height - bottom);
+      context.stroke();
+    }
+    for (let y = top; y <= height - bottom; y += 60) {
+      context.beginPath();
+      context.moveTo(left, y);
+      context.lineTo(width - right, y);
+      context.stroke();
+    }
+
+    const startPoint = toCanvas(start);
+    const targetPoint = toCanvas(target);
+    context.save();
+    context.setLineDash([7, 7]);
+    context.strokeStyle = "rgba(242, 191, 75, 0.65)";
+    context.beginPath();
+    context.moveTo(startPoint.x, startPoint.y);
+    context.lineTo(targetPoint.x, targetPoint.y);
+    context.stroke();
+    context.restore();
+
+    function drawPath(path, color, dashed) {
+      if (path.length < 2) return;
+      context.save();
+      context.strokeStyle = color;
+      context.lineWidth = 4;
+      context.lineJoin = "round";
+      context.lineCap = "round";
+      if (dashed) context.setLineDash([10, 7]);
+      context.beginPath();
+      path.forEach((point, index) => {
+        const mapped = toCanvas(point);
+        if (index === 0) context.moveTo(mapped.x, mapped.y);
+        else context.lineTo(mapped.x, mapped.y);
+      });
+      context.stroke();
+      context.restore();
+    }
+
+    drawPath(rawPath, "#70a3ff", true);
+    drawPath(virtualPath, "#f2bf4b", false);
+
+    context.fillStyle = "#f8fbff";
+    context.beginPath();
+    context.arc(startPoint.x, startPoint.y, 7, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = "#f2bf4b";
+    context.strokeStyle = "#fff0b8";
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(targetPoint.x, targetPoint.y, Math.max(7, (row.targetWidth || 30) * scale / 2), 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+
+    if (Number.isFinite(row.transitionRawX) && Number.isFinite(row.transitionRawY)) {
+      const transitionPoint = toCanvas({ x: row.transitionRawX, y: row.transitionRawY });
+      context.fillStyle = "#f37b59";
+      context.beginPath();
+      context.arc(transitionPoint.x, transitionPoint.y, 6, 0, Math.PI * 2);
+      context.fill();
+    }
+
+    context.font = chartTextFont();
+    context.fillStyle = "#70a3ff";
+    context.fillText("破線：実際の入力軌道", width - 255, height - 27);
+    context.fillStyle = "#f2bf4b";
+    context.fillText("実線：画面上のカーソル軌道", width - 255, height - 10);
+    return true;
+  }
+
+  function drawTrajectory() {
+    const dataset = state.analysisDatasets[ui.trajectorySource.value];
+    const phaseKey = ui.trajectoryPhase.value;
+    const rows = analysisRowsForPhase(dataset, phaseKey);
+    const index = Number(ui.trajectoryTrial.value);
+    const row = rows[index];
+    if (!dataset || !row) {
+      ui.trajectoryStatus.textContent = "表示するCSVと試行を選択してください。";
+      ui.trajectoryStatus.dataset.state = "error";
+      drawEmptyChart(ui.trajectoryChart, "軌道の比較", "CSVを読み込むとここに表示されます。", true);
+      return;
+    }
+    const drawn = drawTrajectoryChart(row, dataset, phaseKey, index + 1);
+    if (drawn) {
+      ui.trajectoryStatus.textContent = `${dataset.label}・${phaseLabelForKey(phaseKey)}・フェーズ内${index + 1}試行を表示しました。`;
+      ui.trajectoryStatus.dataset.state = "success";
+    } else {
+      ui.trajectoryStatus.textContent = "この試行には軌道データがありません。";
+      ui.trajectoryStatus.dataset.state = "error";
+    }
+  }
+
+  async function loadAnalysisFile(event, datasetKey, fileNameElement) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    fileNameElement.textContent = file.name;
+    try {
+      const text = await file.text();
+      const dataset = parseAnalysisDataset(text, datasetKey, file.name);
+      if (!dataset.rows.length) throw new Error("CSVに試行データがありません。");
+      state.analysisDatasets[datasetKey] = dataset;
+      setAnalysisStatus(`${dataset.label}のCSVを読み込みました（${dataset.rows.length}試行）。`, "success");
+      updateTrajectoryOptions();
+      drawAnalysis();
+    } catch (error) {
+      state.analysisDatasets[datasetKey] = null;
+      fileNameElement.textContent = "読み込みに失敗しました";
+      setAnalysisStatus(`${datasetKey === "pencil" ? "タッチペン" : "マウス"}CSVを読み込めませんでした。CSV形式を確認してください。`, "error");
+      updateTrajectoryOptions();
+    }
+  }
+
+  function clearAnalysis() {
+    state.analysisDatasets.mouse = null;
+    state.analysisDatasets.pencil = null;
+    ui.mouseCsvInput.value = "";
+    ui.pencilCsvInput.value = "";
+    ui.mouseFileName.textContent = "未選択";
+    ui.pencilFileName.textContent = "未選択";
+    ui.analysisSummaryBody.innerHTML = "";
+    setAnalysisStatus("マウスとタッチペンのCSVを選択してください。");
+    ui.trajectoryStatus.textContent = "実線：画面上のカーソル／破線：実際の入力軌道";
+    ui.trajectoryStatus.dataset.state = "";
+    updateTrajectoryOptions();
+    drawEmptyChart(ui.adaptationChart, "運動適応曲線", "CSVを読み込むとここに表示されます。");
+    drawEmptyChart(ui.trajectoryChart, "軌道の比較", "CSVを読み込むとここに表示されます。", true);
+  }
+
   ui.startButton.addEventListener("click", () => {
     if (state.sessionState === "complete") resetSession();
     startSession();
@@ -948,11 +1765,32 @@
   });
   ui.csvButton.addEventListener("click", downloadCsv);
   ui.jsonButton.addEventListener("click", downloadJson);
+  ui.deviceType.addEventListener("input", updateSettingReadouts);
+  ui.deviceType.addEventListener("change", () => {
+    updateSettingReadouts();
+    if (state.sessionState === "idle") showIntro();
+  });
   ui.perturbationMode.addEventListener("input", updateSettingReadouts);
   ui.perturbationMode.addEventListener("change", updateSettingReadouts);
+  ui.perturbationTiming.addEventListener("input", updateSettingReadouts);
+  ui.perturbationTiming.addEventListener("change", () => {
+    updateSettingReadouts();
+    if (state.sessionState === "idle") showIntro();
+  });
   ui.rotationAngle.addEventListener("input", updateSettingReadouts);
   ui.lagStrength.addEventListener("input", updateSettingReadouts);
   ui.transitionPoint.addEventListener("input", updateSettingReadouts);
+
+  ui.mouseCsvInput.addEventListener("change", (event) => loadAnalysisFile(event, "mouse", ui.mouseFileName));
+  ui.pencilCsvInput.addEventListener("change", (event) => loadAnalysisFile(event, "pencil", ui.pencilFileName));
+  ui.drawAnalysisButton.addEventListener("click", drawAnalysis);
+  ui.clearAnalysisButton.addEventListener("click", clearAnalysis);
+  ui.analysisPhase.addEventListener("change", drawAnalysis);
+  ui.analysisMetric.addEventListener("change", drawAnalysis);
+  ui.analysisWindow.addEventListener("change", drawAnalysis);
+  ui.trajectorySource.addEventListener("change", updateTrajectoryOptions);
+  ui.trajectoryPhase.addEventListener("change", updateTrajectoryOptions);
+  ui.drawTrajectoryButton.addEventListener("click", drawTrajectory);
 
   canvas.addEventListener("pointerdown", handlePointerDown);
   canvas.addEventListener("pointermove", handlePointerMove);
@@ -965,5 +1803,8 @@
   updateProgress();
   showIntro();
   drawArena();
+  updateTrajectoryOptions();
+  drawEmptyChart(ui.adaptationChart, "運動適応曲線", "CSVを読み込むとここに表示されます。");
+  drawEmptyChart(ui.trajectoryChart, "軌道の比較", "CSVを読み込むとここに表示されます。", true);
   window.requestAnimationFrame(animationFrame);
 })();

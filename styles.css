@@ -333,6 +333,140 @@ h2 {
   font-weight: 600;
 }
 
+.analysis-panel {
+  overflow: hidden;
+}
+
+.analysis-intro {
+  margin: -4px 0 17px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.analysis-file-grid,
+.analysis-control-grid,
+.trajectory-control-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.analysis-file-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 3px;
+}
+
+.analysis-control-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.file-field {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.file-field .field-label {
+  margin-top: 0;
+}
+
+.file-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.file-input::file-selector-button {
+  margin-right: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.file-name {
+  display: block;
+  overflow: hidden;
+  margin-top: 8px;
+  color: var(--soft-ink);
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-actions {
+  margin-top: 16px;
+}
+
+.analysis-status {
+  min-height: 1.35em;
+  margin: 10px 0 13px;
+  color: var(--muted);
+  font-size: 0.73rem;
+  line-height: 1.5;
+}
+
+.analysis-status[data-state="error"] {
+  color: #b44d2b;
+}
+
+.analysis-status[data-state="success"] {
+  color: var(--green);
+}
+
+.chart-shell {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fbfcfe;
+}
+
+.chart-shell canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 300px;
+}
+
+.analysis-summary-wrap {
+  margin-top: 14px;
+}
+
+.trajectory-analysis {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.subpanel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.subpanel-heading h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.trajectory-control-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.trajectory-chart-shell {
+  background: #172334;
+}
+
 .instruction-list {
   margin: 0;
   padding-left: 19px;
@@ -628,6 +762,12 @@ td {
 
   .readout-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analysis-file-grid,
+  .analysis-control-grid,
+  .trajectory-control-grid {
+    grid-template-columns: 1fr;
   }
 
   .footer-note {

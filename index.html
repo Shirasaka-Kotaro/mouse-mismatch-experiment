@@ -25,11 +25,18 @@
                 <p class="panel-kicker">SETUP</p>
                 <h2>実験設定</h2>
               </div>
-              <span class="device-chip">MOUSE</span>
+              <span id="deviceChip" class="device-chip">MOUSE</span>
             </div>
 
             <label class="field-label" for="participantId">参加者ID</label>
             <input id="participantId" class="text-input" type="text" value="P001" maxlength="32" autocomplete="off" />
+
+            <label class="field-label" for="deviceType">操作デバイス</label>
+            <select id="deviceType" class="select-input">
+              <option value="mouse" selected>PCマウス</option>
+              <option value="pencil">iPadタッチペン</option>
+            </select>
+            <p class="field-help">CSVに操作デバイスを記録し、マウスとタッチペンを比較します。</p>
 
             <label class="field-label" for="trialsPerBlock">1ブロックの試行数</label>
             <select id="trialsPerBlock" class="select-input">
@@ -46,6 +53,13 @@
               <option value="rotate">回転：指定角度だけずれる</option>
             </select>
             <p id="perturbationHelp" class="field-help">動作途中から、カーソルの追従を弱めます。</p>
+
+            <label class="field-label" for="perturbationTiming">摂動の開始タイミング</label>
+            <select id="perturbationTiming" class="select-input">
+              <option value="mid-trial" selected>動作途中から（オンライン修正）</option>
+              <option value="trial-start">試行開始から（適応曲線向け）</option>
+            </select>
+            <p id="timingHelp" class="field-help">動作途中から変化させ、1回の動作中の修正を測定します。</p>
 
             <div id="rotationAngleField" class="range-field" hidden>
               <div class="range-header">
@@ -65,7 +79,7 @@
               <p class="field-help">適応フェーズで、入力に対するカーソルの追従を弱めます。</p>
             </div>
 
-            <div class="range-field">
+            <div id="transitionPointField" class="range-field">
               <div class="range-header">
                 <label class="field-label" for="transitionPoint">状態変化の位置</label>
                 <output id="transitionPointValue" for="transitionPoint">55%</output>
@@ -109,7 +123,7 @@
               <li>左クリックを押したまま、黄色の目標へ移動します。</li>
               <li>目標内でボタンを離します。</li>
             </ol>
-            <p class="callout">適応フェーズでは、動作の途中から設定した摂動が始まります。画面上の小さなカーソルだけを見て操作してください。</p>
+            <p id="protocolCallout" class="callout">適応フェーズでは、動作の途中から設定した摂動が始まります。画面上の小さなカーソルだけを見て操作してください。</p>
           </section>
         </aside>
 
@@ -192,6 +206,133 @@
                 </thead>
                 <tbody id="resultsBody"></tbody>
               </table>
+            </div>
+          </section>
+
+          <section id="analysisPanel" class="panel analysis-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="panel-kicker">ANALYSIS</p>
+                <h2>運動適応曲線</h2>
+              </div>
+              <span class="result-summary">CSV比較</span>
+            </div>
+
+            <p class="analysis-intro">
+              実験終了後にマウスとタッチペンのCSVを読み込み、試行回数に沿った誤差の変化を比較します。
+              まずは「正規化終点誤差」を主指標にします。
+            </p>
+
+            <div class="analysis-file-grid">
+              <div class="file-field">
+                <label class="field-label" for="mouseCsvInput">マウスのCSV</label>
+                <input id="mouseCsvInput" class="file-input" type="file" accept=".csv,text/csv" />
+                <span id="mouseFileName" class="file-name">未選択</span>
+              </div>
+              <div class="file-field">
+                <label class="field-label" for="pencilCsvInput">タッチペンのCSV</label>
+                <input id="pencilCsvInput" class="file-input" type="file" accept=".csv,text/csv" />
+                <span id="pencilFileName" class="file-name">未選択</span>
+              </div>
+            </div>
+
+            <div class="analysis-control-grid">
+              <div>
+                <label class="field-label" for="analysisPhase">分析するフェーズ</label>
+                <select id="analysisPhase" class="select-input">
+                  <option value="adaptation" selected>摂動・適応</option>
+                  <option value="baseline">ベースライン</option>
+                  <option value="washout">後効果</option>
+                  <option value="all">全フェーズ</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label" for="analysisMetric">縦軸の指標</label>
+                <select id="analysisMetric" class="select-input">
+                  <option value="endpointNormalized" selected>正規化終点誤差（推奨）</option>
+                  <option value="directionError">方向誤差（°）</option>
+                  <option value="movementTime">移動時間（ms）</option>
+                  <option value="pathLengthRatio">実軌道長比</option>
+                  <option value="corrections">修正回数</option>
+                  <option value="successRate">成功率（移動平均）</option>
+                  <option value="cursorMouseGap">マウス–カーソル距離（px）</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label" for="analysisWindow">移動平均の窓</label>
+                <select id="analysisWindow" class="select-input">
+                  <option value="1">なし</option>
+                  <option value="3">3試行</option>
+                  <option value="5" selected>5試行</option>
+                  <option value="7">7試行</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="button-row analysis-actions">
+              <button id="drawAnalysisButton" class="button primary" type="button">適応曲線を描画</button>
+              <button id="clearAnalysisButton" class="button ghost" type="button">分析をクリア</button>
+            </div>
+            <p id="analysisStatus" class="analysis-status" role="status">マウスとタッチペンのCSVを選択してください。</p>
+
+            <div class="chart-shell">
+              <canvas id="adaptationChart" width="1200" height="620" aria-label="マウスとタッチペンの運動適応曲線"></canvas>
+            </div>
+
+            <div class="table-wrap analysis-summary-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>デバイス</th>
+                    <th>試行数</th>
+                    <th>前半平均</th>
+                    <th>後半平均</th>
+                    <th>変化量（後半−前半）</th>
+                  </tr>
+                </thead>
+                <tbody id="analysisSummaryBody"></tbody>
+              </table>
+            </div>
+
+            <div class="trajectory-analysis">
+              <div class="subpanel-heading">
+                <div>
+                  <p class="panel-kicker">TRAJECTORY</p>
+                  <h3>軌道の比較</h3>
+                </div>
+                <span class="result-summary">代表試行</span>
+              </div>
+              <div class="trajectory-control-grid">
+                <div>
+                  <label class="field-label" for="trajectorySource">デバイス</label>
+                  <select id="trajectorySource" class="select-input">
+                    <option value="mouse">マウス</option>
+                    <option value="pencil">タッチペン</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="trajectoryPhase">フェーズ</label>
+                  <select id="trajectoryPhase" class="select-input">
+                    <option value="adaptation" selected>摂動・適応</option>
+                    <option value="baseline">ベースライン</option>
+                    <option value="washout">後効果</option>
+                    <option value="all">全フェーズ</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="trajectoryTrial">試行</label>
+                  <select id="trajectoryTrial" class="select-input" disabled>
+                    <option value="">CSVを読み込んでください</option>
+                  </select>
+                </div>
+              </div>
+              <div class="button-row analysis-actions">
+                <button id="drawTrajectoryButton" class="button secondary" type="button">軌道を表示</button>
+              </div>
+              <p id="trajectoryStatus" class="analysis-status">実線：画面上のカーソル／破線：実際の入力軌道</p>
+              <div class="chart-shell trajectory-chart-shell">
+                <canvas id="trajectoryChart" width="1200" height="620" aria-label="実際の入力軌道と画面上のカーソル軌道"></canvas>
+              </div>
             </div>
           </section>
         </section>
