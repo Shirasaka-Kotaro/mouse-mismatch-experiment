@@ -9,6 +9,8 @@
     participantId: document.getElementById("participantId"),
     deviceType: document.getElementById("deviceType"),
     deviceChip: document.getElementById("deviceChip"),
+    handedness: document.getElementById("handedness"),
+    age: document.getElementById("age"),
     trialsPerBlock: document.getElementById("trialsPerBlock"),
     perturbationMode: document.getElementById("perturbationMode"),
     perturbationHelp: document.getElementById("perturbationHelp"),
@@ -44,6 +46,7 @@
     arenaOverlay: document.getElementById("arenaOverlay"),
     overlayTitle: document.getElementById("overlayTitle"),
     overlayBody: document.getElementById("overlayBody"),
+    countdownDisplay: document.getElementById("countdownDisplay"),
     overlayButton: document.getElementById("overlayButton"),
     resultsPanel: document.getElementById("resultsPanel"),
     resultsBody: document.getElementById("resultsBody"),
@@ -93,6 +96,12 @@
     mouse: "PCマウス",
     pencil: "iPadタッチペン",
   };
+  const HANDEDNESS_LABELS = {
+    right: "右利き",
+    left: "左利き",
+    ambidextrous: "両利き",
+    prefer_not_to_say: "回答しない",
+  };
   const PERTURBATION_TIMING_HELP = {
     "mid-trial": "動作途中から変化させ、1回の動作中のオンライン修正を測定します。",
     "trial-start": "各適応試行の開始時から変化させ、試行を重ねた適応曲線を測定します。",
@@ -129,6 +138,7 @@
     sessionStartedAt: null,
     sessionFinishedAt: null,
     advanceTimer: null,
+    countdownTimer: null,
     overlayAction: null,
     analysisDatasets: {
       mouse: null,
@@ -207,6 +217,9 @@
     return {
       participantId: ui.participantId.value.trim() || "P001",
       deviceType: ui.deviceType.value,
+      handedness: ui.handedness.value,
+      handednessLabel: HANDEDNESS_LABELS[ui.handedness.value] || "",
+      age: ui.age.value === "na" || ui.age.value === "" ? null : Number(ui.age.value),
       trialsPerBlock: Number(ui.trialsPerBlock.value),
       perturbationMode: ui.perturbationMode.value,
       perturbationTiming: ui.perturbationTiming.value,
@@ -220,6 +233,33 @@
     };
   }
 
+  function populateAgeOptions() {
+    const notAnsweredOption = ui.age.querySelector('option[value="na"]');
+    if (!notAnsweredOption || ui.age.options.length > 2) return;
+    for (let age = 10; age <= 100; age += 1) {
+      const option = document.createElement("option");
+      option.value = String(age);
+      option.textContent = `${age}歳`;
+      ui.age.insertBefore(option, notAnsweredOption);
+    }
+  }
+
+  function validateParticipantSettings() {
+    if (!ui.handedness.value) {
+      ui.overlayTitle.textContent = "利き手を選択してください";
+      ui.overlayBody.textContent = "実験を開始する前に、実験設定で参加者の利き手を選択してください。";
+      ui.arenaHint.textContent = "利き手を選択してから実験を開始してください。";
+      return false;
+    }
+    if (!ui.age.value) {
+      ui.overlayTitle.textContent = "年齢を選択してください";
+      ui.overlayBody.textContent = "実験を開始する前に、実験設定で参加者の年齢を選択してください。";
+      ui.arenaHint.textContent = "年齢を選択してから実験を開始してください。";
+      return false;
+    }
+    return true;
+  }
+
   function setSessionState(nextState) {
     state.sessionState = nextState;
     const labels = {
@@ -227,6 +267,7 @@
       running: "実験中",
       paused: "一時停止",
       break: "休憩",
+      countdown: "開始準備",
       complete: "完了",
     };
     ui.sessionBadge.textContent = labels[nextState] || nextState;
@@ -243,6 +284,8 @@
     [
       ui.participantId,
       ui.deviceType,
+      ui.handedness,
+      ui.age,
       ui.trialsPerBlock,
       ui.perturbationMode,
       ui.perturbationTiming,
@@ -256,7 +299,7 @@
 
     ui.startButton.disabled = !canStart;
     ui.startButton.textContent = state.sessionState === "complete" ? "新しいセッション" : "実験を開始";
-    ui.pauseButton.disabled = !active || state.pointerDown;
+    ui.pauseButton.disabled = !["running", "paused"].includes(state.sessionState) || state.pointerDown;
     ui.pauseButton.textContent = state.sessionState === "paused" ? "再開" : "一時停止";
     ui.downloadGroup.hidden = state.trials.length === 0;
   }
@@ -351,6 +394,9 @@
       targetAngle: angle,
       deviceType: state.settings.deviceType,
       deviceLabel: DEVICE_LABELS[state.settings.deviceType] || state.settings.deviceType,
+      handedness: state.settings.handedness,
+      handednessLabel: state.settings.handednessLabel,
+      age: state.settings.age,
       perturbationMode: state.settings.perturbationMode,
       perturbationAngleDeg: effectivePerturbationAngle(state.settings.perturbationMode, state.settings.rotationAngle),
       perturbationTiming: state.settings.perturbationTiming,
@@ -387,13 +433,45 @@
     ui.overlayTitle.textContent = title;
     ui.overlayBody.textContent = body;
     ui.overlayButton.textContent = buttonLabel;
+    ui.overlayButton.hidden = false;
+    ui.countdownDisplay.hidden = true;
+    ui.countdownDisplay.textContent = "";
     state.overlayAction = action;
     ui.arenaOverlay.hidden = false;
   }
 
   function hideOverlay() {
     ui.arenaOverlay.hidden = true;
+    ui.overlayButton.hidden = false;
+    ui.countdownDisplay.hidden = true;
+    ui.countdownDisplay.textContent = "";
     state.overlayAction = null;
+  }
+
+  function clearCountdownTimer() {
+    if (state.countdownTimer) window.clearInterval(state.countdownTimer);
+    state.countdownTimer = null;
+  }
+
+  function startCountdown(title, body, action) {
+    clearCountdownTimer();
+    setSessionState("countdown");
+    showOverlay(title, body, "", action);
+    ui.overlayButton.hidden = true;
+    ui.countdownDisplay.hidden = false;
+
+    let remaining = 3;
+    ui.countdownDisplay.textContent = String(remaining);
+    state.countdownTimer = window.setInterval(() => {
+      remaining -= 1;
+      if (remaining > 0) {
+        ui.countdownDisplay.textContent = String(remaining);
+        return;
+      }
+      clearCountdownTimer();
+      hideOverlay();
+      action();
+    }, 1000);
   }
 
   function showIntro() {
@@ -410,7 +488,9 @@
 
   function startSession() {
     if (state.sessionState === "running") return;
+    if (!validateParticipantSettings()) return;
     if (state.advanceTimer) window.clearTimeout(state.advanceTimer);
+    clearCountdownTimer();
 
     state.settings = readSettings();
     ui.participantId.value = state.settings.participantId;
@@ -431,13 +511,19 @@
     ui.resultsPanel.hidden = true;
     ui.resultsBody.innerHTML = "";
     ui.resultSummary.textContent = "";
-    setSessionState("running");
-    hideOverlay();
-    prepareTrial();
+    startCountdown(
+      "実験開始の準備",
+      "3秒後に最初の試行を開始します。開始円にマウスまたはタッチペンを準備してください。",
+      () => {
+        setSessionState("running");
+        prepareTrial();
+      },
+    );
   }
 
   function resetSession() {
     if (state.advanceTimer) window.clearTimeout(state.advanceTimer);
+    clearCountdownTimer();
     state.advanceTimer = null;
     state.pointerDown = false;
     state.pointerId = null;
@@ -670,9 +756,14 @@
 
   function prepareNextBlock() {
     if (state.sessionState !== "break") return;
-    setSessionState("running");
-    hideOverlay();
-    prepareTrial();
+    startCountdown(
+      "次のブロックの準備",
+      "3秒後に次のブロックを開始します。開始円にマウスまたはタッチペンを準備してください。",
+      () => {
+        setSessionState("running");
+        prepareTrial();
+      },
+    );
   }
 
   function finishSession() {
@@ -900,7 +991,7 @@
 
   function downloadCsv() {
     const columns = [
-      "sessionTrial", "deviceType", "deviceLabel", "phaseIndex", "phaseKey", "phaseLabel", "blockIndex", "trialIndex",
+      "sessionTrial", "deviceType", "deviceLabel", "handedness", "handednessLabel", "age", "phaseIndex", "phaseKey", "phaseLabel", "blockIndex", "trialIndex",
       "perturbationMode", "perturbationAngleDeg", "targetX", "targetY", "targetWidth", "amplitude", "fittsId", "targetAngle",
       "perturbationTiming",
       "movementTime", "transitionOccurred", "transitionTime", "rawEndX", "rawEndY",
@@ -923,7 +1014,7 @@
     const payload = {
       metadata: {
         app: "mouse-mismatch-experiment",
-        version: "0.3.0",
+        version: "0.4.0",
         participantId: state.settings?.participantId || null,
         sessionStartedAt: state.sessionStartedAt,
         sessionFinishedAt: state.sessionFinishedAt,
@@ -1770,6 +1861,12 @@
     updateSettingReadouts();
     if (state.sessionState === "idle") showIntro();
   });
+  ui.handedness.addEventListener("change", () => {
+    if (state.sessionState === "idle") showIntro();
+  });
+  ui.age.addEventListener("change", () => {
+    if (state.sessionState === "idle") showIntro();
+  });
   ui.perturbationMode.addEventListener("input", updateSettingReadouts);
   ui.perturbationMode.addEventListener("change", updateSettingReadouts);
   ui.perturbationTiming.addEventListener("input", updateSettingReadouts);
@@ -1798,6 +1895,7 @@
   canvas.addEventListener("pointercancel", handlePointerCancel);
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 
+  populateAgeOptions();
   updateSettingReadouts();
   setSessionState("idle");
   updateProgress();

@@ -38,6 +38,22 @@
             </select>
             <p class="field-help">CSVに操作デバイスを記録し、マウスとタッチペンを比較します。</p>
 
+            <label class="field-label" for="handedness">利き手</label>
+            <select id="handedness" class="select-input">
+              <option value="" selected>選択してください</option>
+              <option value="right">右利き</option>
+              <option value="left">左利き</option>
+              <option value="ambidextrous">両利き</option>
+              <option value="prefer_not_to_say">回答しない</option>
+            </select>
+
+            <label class="field-label" for="age">年齢</label>
+            <select id="age" class="select-input">
+              <option value="" selected>選択してください</option>
+              <option value="na">回答しない</option>
+            </select>
+            <p class="field-help">利き手と年齢は各試行のCSVおよびJSONに保存されます。</p>
+
             <label class="field-label" for="trialsPerBlock">1ブロックの試行数</label>
             <select id="trialsPerBlock" class="select-input">
               <option value="8">8（動作確認）</option>
@@ -159,6 +175,7 @@
                   <span class="overlay-eyebrow">READY TO TEST</span>
                   <h2 id="overlayTitle">マウス実験を開始してください</h2>
                   <p id="overlayBody">通常状態、動作途中の摂動、後効果の順に測定します。参加者IDを確認してから開始してください。</p>
+                  <div id="countdownDisplay" class="countdown-display" hidden aria-live="assertive"></div>
                   <button id="overlayButton" class="button primary" type="button">実験を開始</button>
                 </div>
               </div>

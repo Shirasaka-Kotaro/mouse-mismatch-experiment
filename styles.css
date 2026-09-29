@@ -634,6 +634,20 @@ h2 {
   line-height: 1.7;
 }
 
+.countdown-display {
+  margin: -4px 0 20px;
+  color: #ffffff;
+  font-size: clamp(3.5rem, 10vw, 5.5rem);
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+  text-shadow: 0 8px 24px rgba(0, 0, 0, 0.26);
+}
+
+.countdown-display[hidden] {
+  display: none;
+}
+
 .overlay-card .button {
   min-width: 160px;
 }
