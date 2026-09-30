@@ -1155,3 +1155,24 @@ td {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* Keep the experiment arena compact enough for ordinary PC screens. */
+@media (min-width: 721px) {
+  .workspace[data-screen="experiment"] .arena-shell {
+    max-width: 900px;
+    margin-inline: auto;
+  }
+
+  .workspace[data-screen="experiment"] .arena-wrap {
+    min-height: 0;
+    display: grid;
+    place-items: center;
+  }
+
+  .workspace[data-screen="experiment"] #arena {
+    width: 100%;
+    max-width: 900px;
+    min-height: 0;
+    height: auto;
+  }
+}
