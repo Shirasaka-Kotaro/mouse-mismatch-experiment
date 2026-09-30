@@ -129,7 +129,20 @@
                 <div class="state-grid">
                   <div class="field-group">
                     <label class="field-label" for="sleepiness">眠気（1〜9）</label>
-                    <div id="sleepiness" class="rating-scale wide" data-radio-group="sleepiness" role="radiogroup" aria-label="眠気"></div>
+                    <div id="sleepiness" class="rating-scale wide" data-radio-group="sleepiness" role="radiogroup" aria-label="眠気">
+                      <div class="rating-options">
+                        <input id="sleepiness-1" type="radio" name="sleepiness-rating" value="1" /><label class="rating-option" for="sleepiness-1"><span>1</span></label>
+                        <input id="sleepiness-2" type="radio" name="sleepiness-rating" value="2" /><label class="rating-option" for="sleepiness-2"><span>2</span></label>
+                        <input id="sleepiness-3" type="radio" name="sleepiness-rating" value="3" /><label class="rating-option" for="sleepiness-3"><span>3</span></label>
+                        <input id="sleepiness-4" type="radio" name="sleepiness-rating" value="4" /><label class="rating-option" for="sleepiness-4"><span>4</span></label>
+                        <input id="sleepiness-5" type="radio" name="sleepiness-rating" value="5" /><label class="rating-option" for="sleepiness-5"><span>5</span></label>
+                        <input id="sleepiness-6" type="radio" name="sleepiness-rating" value="6" /><label class="rating-option" for="sleepiness-6"><span>6</span></label>
+                        <input id="sleepiness-7" type="radio" name="sleepiness-rating" value="7" /><label class="rating-option" for="sleepiness-7"><span>7</span></label>
+                        <input id="sleepiness-8" type="radio" name="sleepiness-rating" value="8" /><label class="rating-option" for="sleepiness-8"><span>8</span></label>
+                        <input id="sleepiness-9" type="radio" name="sleepiness-rating" value="9" /><label class="rating-option" for="sleepiness-9"><span>9</span></label>
+                      </div>
+                      <div class="rating-caption"><span>目覚めている</span><span>とても眠い</span></div>
+                    </div>
                   </div>
                   <div class="field-group time-field">
                     <label class="field-label" for="sleepinessTime">記入時刻</label>
@@ -144,28 +157,82 @@
                 <div class="settings-grid fatigue-grid">
               <div class="field-group">
                 <label class="field-label" for="fingerFatigue">指</label>
-                <div id="fingerFatigue" class="rating-scale compact" data-radio-group="fingerFatigue" role="radiogroup" aria-label="指の疲労度"></div>
+                <div id="fingerFatigue" class="rating-scale compact" data-radio-group="fingerFatigue" role="radiogroup" aria-label="指の疲労度">
+                  <div class="rating-options">
+                    <input id="fingerFatigue-1" type="radio" name="fingerFatigue-rating" value="1" /><label class="rating-option" for="fingerFatigue-1"><span>1</span></label>
+                    <input id="fingerFatigue-2" type="radio" name="fingerFatigue-rating" value="2" /><label class="rating-option" for="fingerFatigue-2"><span>2</span></label>
+                    <input id="fingerFatigue-3" type="radio" name="fingerFatigue-rating" value="3" /><label class="rating-option" for="fingerFatigue-3"><span>3</span></label>
+                    <input id="fingerFatigue-4" type="radio" name="fingerFatigue-rating" value="4" /><label class="rating-option" for="fingerFatigue-4"><span>4</span></label>
+                    <input id="fingerFatigue-5" type="radio" name="fingerFatigue-rating" value="5" /><label class="rating-option" for="fingerFatigue-5"><span>5</span></label>
+                  </div>
+                  <div class="rating-caption"><span>なし</span><span>非常に高い</span></div>
+                </div>
               </div>
               <div class="field-group">
                 <label class="field-label" for="armFatigue">腕</label>
-                <div id="armFatigue" class="rating-scale compact" data-radio-group="armFatigue" role="radiogroup" aria-label="腕の疲労度"></div>
+                <div id="armFatigue" class="rating-scale compact" data-radio-group="armFatigue" role="radiogroup" aria-label="腕の疲労度">
+                  <div class="rating-options">
+                    <input id="armFatigue-1" type="radio" name="armFatigue-rating" value="1" /><label class="rating-option" for="armFatigue-1"><span>1</span></label>
+                    <input id="armFatigue-2" type="radio" name="armFatigue-rating" value="2" /><label class="rating-option" for="armFatigue-2"><span>2</span></label>
+                    <input id="armFatigue-3" type="radio" name="armFatigue-rating" value="3" /><label class="rating-option" for="armFatigue-3"><span>3</span></label>
+                    <input id="armFatigue-4" type="radio" name="armFatigue-rating" value="4" /><label class="rating-option" for="armFatigue-4"><span>4</span></label>
+                    <input id="armFatigue-5" type="radio" name="armFatigue-rating" value="5" /><label class="rating-option" for="armFatigue-5"><span>5</span></label>
+                  </div>
+                  <div class="rating-caption"><span>なし</span><span>非常に高い</span></div>
+                </div>
               </div>
               <div class="field-group">
                 <label class="field-label" for="shoulderFatigue">肩</label>
-                <div id="shoulderFatigue" class="rating-scale compact" data-radio-group="shoulderFatigue" role="radiogroup" aria-label="肩の疲労度"></div>
+                <div id="shoulderFatigue" class="rating-scale compact" data-radio-group="shoulderFatigue" role="radiogroup" aria-label="肩の疲労度">
+                  <div class="rating-options">
+                    <input id="shoulderFatigue-1" type="radio" name="shoulderFatigue-rating" value="1" /><label class="rating-option" for="shoulderFatigue-1"><span>1</span></label>
+                    <input id="shoulderFatigue-2" type="radio" name="shoulderFatigue-rating" value="2" /><label class="rating-option" for="shoulderFatigue-2"><span>2</span></label>
+                    <input id="shoulderFatigue-3" type="radio" name="shoulderFatigue-rating" value="3" /><label class="rating-option" for="shoulderFatigue-3"><span>3</span></label>
+                    <input id="shoulderFatigue-4" type="radio" name="shoulderFatigue-rating" value="4" /><label class="rating-option" for="shoulderFatigue-4"><span>4</span></label>
+                    <input id="shoulderFatigue-5" type="radio" name="shoulderFatigue-rating" value="5" /><label class="rating-option" for="shoulderFatigue-5"><span>5</span></label>
+                  </div>
+                  <div class="rating-caption"><span>なし</span><span>非常に高い</span></div>
+                </div>
               </div>
               <div class="field-group">
                 <label class="field-label" for="wristFatigue">手首</label>
-                <div id="wristFatigue" class="rating-scale compact" data-radio-group="wristFatigue" role="radiogroup" aria-label="手首の疲労度"></div>
+                <div id="wristFatigue" class="rating-scale compact" data-radio-group="wristFatigue" role="radiogroup" aria-label="手首の疲労度">
+                  <div class="rating-options">
+                    <input id="wristFatigue-1" type="radio" name="wristFatigue-rating" value="1" /><label class="rating-option" for="wristFatigue-1"><span>1</span></label>
+                    <input id="wristFatigue-2" type="radio" name="wristFatigue-rating" value="2" /><label class="rating-option" for="wristFatigue-2"><span>2</span></label>
+                    <input id="wristFatigue-3" type="radio" name="wristFatigue-rating" value="3" /><label class="rating-option" for="wristFatigue-3"><span>3</span></label>
+                    <input id="wristFatigue-4" type="radio" name="wristFatigue-rating" value="4" /><label class="rating-option" for="wristFatigue-4"><span>4</span></label>
+                    <input id="wristFatigue-5" type="radio" name="wristFatigue-rating" value="5" /><label class="rating-option" for="wristFatigue-5"><span>5</span></label>
+                  </div>
+                  <div class="rating-caption"><span>なし</span><span>非常に高い</span></div>
+                </div>
               </div>
               <div class="field-group">
                 <label class="field-label" for="neckFatigue">首</label>
-                <div id="neckFatigue" class="rating-scale compact" data-radio-group="neckFatigue" role="radiogroup" aria-label="首の疲労度"></div>
+                <div id="neckFatigue" class="rating-scale compact" data-radio-group="neckFatigue" role="radiogroup" aria-label="首の疲労度">
+                  <div class="rating-options">
+                    <input id="neckFatigue-1" type="radio" name="neckFatigue-rating" value="1" /><label class="rating-option" for="neckFatigue-1"><span>1</span></label>
+                    <input id="neckFatigue-2" type="radio" name="neckFatigue-rating" value="2" /><label class="rating-option" for="neckFatigue-2"><span>2</span></label>
+                    <input id="neckFatigue-3" type="radio" name="neckFatigue-rating" value="3" /><label class="rating-option" for="neckFatigue-3"><span>3</span></label>
+                    <input id="neckFatigue-4" type="radio" name="neckFatigue-rating" value="4" /><label class="rating-option" for="neckFatigue-4"><span>4</span></label>
+                    <input id="neckFatigue-5" type="radio" name="neckFatigue-rating" value="5" /><label class="rating-option" for="neckFatigue-5"><span>5</span></label>
+                  </div>
+                  <div class="rating-caption"><span>なし</span><span>非常に高い</span></div>
+                </div>
               </div>
               <div class="field-group">
                 <label class="field-label" for="overallFatigue">全体</label>
-                <div id="overallFatigue" class="rating-scale compact" data-radio-group="overallFatigue" role="radiogroup" aria-label="全体の疲労度"></div>
+                <div id="overallFatigue" class="rating-scale compact" data-radio-group="overallFatigue" role="radiogroup" aria-label="全体の疲労度">
+                  <div class="rating-options">
+                    <input id="overallFatigue-1" type="radio" name="overallFatigue-rating" value="1" /><label class="rating-option" for="overallFatigue-1"><span>1</span></label>
+                    <input id="overallFatigue-2" type="radio" name="overallFatigue-rating" value="2" /><label class="rating-option" for="overallFatigue-2"><span>2</span></label>
+                    <input id="overallFatigue-3" type="radio" name="overallFatigue-rating" value="3" /><label class="rating-option" for="overallFatigue-3"><span>3</span></label>
+                    <input id="overallFatigue-4" type="radio" name="overallFatigue-rating" value="4" /><label class="rating-option" for="overallFatigue-4"><span>4</span></label>
+                    <input id="overallFatigue-5" type="radio" name="overallFatigue-rating" value="5" /><label class="rating-option" for="overallFatigue-5"><span>5</span></label>
+                  </div>
+                  <div class="rating-caption"><span>なし</span><span>非常に高い</span></div>
                 </div>
+              </div>
               </div>
             </div>
 

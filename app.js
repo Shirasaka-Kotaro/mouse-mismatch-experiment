@@ -201,6 +201,7 @@
       pencil: null,
     },
   };
+  const runtimeSettingsProfiles = Object.create(null);
 
   function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
@@ -362,6 +363,16 @@
 
   function populateRatingOptions(group, minimum, maximum, lowLabel, highLabel) {
     if (!group || group.dataset.ratingReady === "true") return;
+    if (group.querySelector('input[type="radio"]')) {
+      if (!group.querySelector(".rating-caption")) {
+        const caption = document.createElement("div");
+        caption.className = "rating-caption";
+        caption.innerHTML = `<span>${lowLabel}</span><span>${highLabel}</span>`;
+        group.appendChild(caption);
+      }
+      group.dataset.ratingReady = "true";
+      return;
+    }
     const options = document.createElement("div");
     options.className = "rating-options";
     const name = `${group.id}-rating`;
@@ -391,15 +402,23 @@
     FATIGUE_FIELD_IDS.forEach((fieldId) => populateRatingOptions(ui[fieldId], 1, 5, "なし", "非常に高い"));
   }
 
-  function readStoredSettingsProfiles() {
+  function readPersistentSettingsProfiles() {
     try {
       const saved = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (!saved) return {};
       const parsed = JSON.parse(saved);
       return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
     } catch (error) {
-      return {};
+      return null;
     }
+  }
+
+  function readStoredSettingsProfiles() {
+    const persistent = readPersistentSettingsProfiles();
+    return {
+      ...(persistent || {}),
+      ...runtimeSettingsProfiles,
+    };
   }
 
   function updateSettingsStorageStatus(message = "", status = "") {
@@ -417,7 +436,13 @@
       return;
     }
 
+    const persistentProfiles = readPersistentSettingsProfiles();
     const profiles = readStoredSettingsProfiles();
+    if (persistentProfiles === null && !profiles[participantId]) {
+      ui.settingsStorageStatus.textContent = "ブラウザの保存領域を利用できません。Live Server等のhttp://localhost環境で開いてください。";
+      ui.settingsStorageStatus.dataset.state = "error";
+      return;
+    }
     if (profiles[participantId]) {
       const savedAt = profiles[participantId].savedAt ? `（${profiles[participantId].savedAt}）` : "";
       ui.settingsStorageStatus.textContent = `${participantId}の保存設定があります${savedAt}。呼び出しまたは上書き保存ができます。`;
@@ -469,17 +494,25 @@
 
     const profiles = readStoredSettingsProfiles();
     const overwriting = Boolean(profiles[participantId]);
-    if (overwriting && !window.confirm(`${participantId}の保存設定を現在の入力内容で上書きしますか？`)) return false;
+    if (overwriting && !window.confirm(`${participantId}の保存設定を現在の入力内容で上書きしますか？`)) {
+      updateSettingsStorageStatus("上書き保存をキャンセルしました。", "");
+      return false;
+    }
 
     const settings = readSettings();
     settings.savedAt = new Date().toLocaleString("ja-JP");
     profiles[participantId] = settings;
+    runtimeSettingsProfiles[participantId] = settings;
     try {
       window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(profiles));
-      updateSettingsStorageStatus(`${participantId}の設定を${overwriting ? "上書き保存" : "保存"}しました。`, "success");
+      const verifiedProfiles = readPersistentSettingsProfiles();
+      if (!verifiedProfiles?.[participantId] || verifiedProfiles[participantId].savedAt !== settings.savedAt) {
+        throw new Error("保存後の読み戻し確認に失敗しました。");
+      }
+      updateSettingsStorageStatus(`${participantId}の設定を${overwriting ? "上書き保存" : "保存"}しました（保存確認済み）。`, "success");
       return true;
     } catch (error) {
-      updateSettingsStorageStatus("設定を保存できませんでした。ブラウザの保存領域を確認してください。", "error");
+      updateSettingsStorageStatus("このページ内では保持しましたが、ブラウザに永続保存できませんでした。Live Server等のhttp://localhost環境で開いてください。", "error");
       return false;
     }
   }
