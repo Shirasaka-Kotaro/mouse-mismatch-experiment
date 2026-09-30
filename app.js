@@ -19,6 +19,7 @@
     deviceChip: document.getElementById("deviceChip"),
     handedness: document.getElementById("handedness"),
     age: document.getElementById("age"),
+    gender: document.getElementById("gender"),
     usedHand: document.getElementById("usedHand"),
     visualAcuity: document.getElementById("visualAcuity"),
     correctionWorn: document.getElementById("correctionWorn"),
@@ -123,6 +124,12 @@
     right: "右利き",
     left: "左利き",
     ambidextrous: "両利き",
+    prefer_not_to_say: "回答しない",
+  };
+  const GENDER_LABELS = {
+    male: "男性",
+    female: "女性",
+    other: "その他",
     prefer_not_to_say: "回答しない",
   };
   const USED_HAND_LABELS = {
@@ -262,31 +269,73 @@
     return PHASES.reduce((sum, phase) => sum + phase.blocks * perBlock, 0);
   }
 
+  function readChoiceValue(control) {
+    if (!control) return "";
+    if (control.dataset?.radioGroup !== undefined) {
+      return control.querySelector('input[type="radio"]:checked')?.value || "";
+    }
+    return control.value ?? "";
+  }
+
+  function setChoiceValue(control, value) {
+    if (!control) return;
+    const stringValue = value === undefined || value === null ? "" : String(value);
+    if (control.dataset?.radioGroup !== undefined) {
+      control.querySelectorAll('input[type="radio"]').forEach((input) => {
+        input.checked = input.value === stringValue;
+      });
+      return;
+    }
+    if ([...control.options].some((option) => option.value === stringValue)) control.value = stringValue;
+  }
+
+  function setControlDisabled(control, disabled) {
+    if (!control) return;
+    if (control.dataset?.radioGroup !== undefined) {
+      control.querySelectorAll('input[type="radio"]').forEach((input) => {
+        input.disabled = disabled;
+      });
+      return;
+    }
+    control.disabled = disabled;
+  }
+
+  function focusControl(control) {
+    if (!control) return;
+    if (control.dataset?.radioGroup !== undefined) {
+      control.querySelector('input[type="radio"]')?.focus();
+      return;
+    }
+    control.focus();
+  }
+
   function readSettings() {
     return {
       participantId: ui.participantId.value.trim() || "P001",
       deviceType: ui.deviceType.value,
-      handedness: ui.handedness.value,
-      handednessLabel: HANDEDNESS_LABELS[ui.handedness.value] || "",
+      handedness: readChoiceValue(ui.handedness),
+      handednessLabel: HANDEDNESS_LABELS[readChoiceValue(ui.handedness)] || "",
       age: ui.age.value === "na" || ui.age.value === "" ? null : Number(ui.age.value),
-      usedHand: ui.usedHand.value,
-      usedHandLabel: USED_HAND_LABELS[ui.usedHand.value] || "",
-      visualAcuity: ui.visualAcuity.value,
-      visualAcuityLabel: VISUAL_ACUITY_LABELS[ui.visualAcuity.value] || "",
-      correctionWorn: ui.correctionWorn.value,
-      correctionWornLabel: YES_NO_LABELS[ui.correctionWorn.value] || "",
-      colorVisionNormal: ui.colorVisionNormal.value,
-      colorVisionNormalLabel: YES_NO_LABELS[ui.colorVisionNormal.value] || "",
-      motorNeurologicalDisease: ui.motorNeurologicalDisease.value,
-      motorNeurologicalDiseaseLabel: MOTOR_NEUROLOGICAL_LABELS[ui.motorNeurologicalDisease.value] || "",
-      sleepiness: ui.sleepiness.value === "" ? null : Number(ui.sleepiness.value),
+      gender: readChoiceValue(ui.gender),
+      genderLabel: GENDER_LABELS[readChoiceValue(ui.gender)] || "",
+      usedHand: readChoiceValue(ui.usedHand),
+      usedHandLabel: USED_HAND_LABELS[readChoiceValue(ui.usedHand)] || "",
+      visualAcuity: readChoiceValue(ui.visualAcuity),
+      visualAcuityLabel: VISUAL_ACUITY_LABELS[readChoiceValue(ui.visualAcuity)] || "",
+      correctionWorn: readChoiceValue(ui.correctionWorn),
+      correctionWornLabel: YES_NO_LABELS[readChoiceValue(ui.correctionWorn)] || "",
+      colorVisionNormal: readChoiceValue(ui.colorVisionNormal),
+      colorVisionNormalLabel: YES_NO_LABELS[readChoiceValue(ui.colorVisionNormal)] || "",
+      motorNeurologicalDisease: readChoiceValue(ui.motorNeurologicalDisease),
+      motorNeurologicalDiseaseLabel: MOTOR_NEUROLOGICAL_LABELS[readChoiceValue(ui.motorNeurologicalDisease)] || "",
+      sleepiness: readChoiceValue(ui.sleepiness) === "" ? null : Number(readChoiceValue(ui.sleepiness)),
       sleepinessTime: ui.sleepinessTime.value,
-      fingerFatigue: ui.fingerFatigue.value === "" ? null : Number(ui.fingerFatigue.value),
-      armFatigue: ui.armFatigue.value === "" ? null : Number(ui.armFatigue.value),
-      shoulderFatigue: ui.shoulderFatigue.value === "" ? null : Number(ui.shoulderFatigue.value),
-      wristFatigue: ui.wristFatigue.value === "" ? null : Number(ui.wristFatigue.value),
-      neckFatigue: ui.neckFatigue.value === "" ? null : Number(ui.neckFatigue.value),
-      overallFatigue: ui.overallFatigue.value === "" ? null : Number(ui.overallFatigue.value),
+      fingerFatigue: readChoiceValue(ui.fingerFatigue) === "" ? null : Number(readChoiceValue(ui.fingerFatigue)),
+      armFatigue: readChoiceValue(ui.armFatigue) === "" ? null : Number(readChoiceValue(ui.armFatigue)),
+      shoulderFatigue: readChoiceValue(ui.shoulderFatigue) === "" ? null : Number(readChoiceValue(ui.shoulderFatigue)),
+      wristFatigue: readChoiceValue(ui.wristFatigue) === "" ? null : Number(readChoiceValue(ui.wristFatigue)),
+      neckFatigue: readChoiceValue(ui.neckFatigue) === "" ? null : Number(readChoiceValue(ui.neckFatigue)),
+      overallFatigue: readChoiceValue(ui.overallFatigue) === "" ? null : Number(readChoiceValue(ui.overallFatigue)),
       trialsPerBlock: Number(ui.trialsPerBlock.value),
       perturbationMode: ui.perturbationMode.value,
       perturbationTiming: ui.perturbationTiming.value,
@@ -311,19 +360,35 @@
     }
   }
 
-  function populateScaleOptions(select, minimum, maximum) {
-    if (!select || select.options.length > 1) return;
+  function populateRatingOptions(group, minimum, maximum, lowLabel, highLabel) {
+    if (!group || group.dataset.ratingReady === "true") return;
+    const options = document.createElement("div");
+    options.className = "rating-options";
+    const name = `${group.id}-rating`;
     for (let value = minimum; value <= maximum; value += 1) {
-      const option = document.createElement("option");
-      option.value = String(value);
-      option.textContent = String(value);
-      select.appendChild(option);
+      const inputId = `${group.id}-${value}`;
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = name;
+      input.value = String(value);
+      input.id = inputId;
+      const label = document.createElement("label");
+      label.className = "rating-option";
+      label.htmlFor = inputId;
+      label.innerHTML = `<span>${value}</span>`;
+      options.append(input, label);
     }
+    group.appendChild(options);
+    const caption = document.createElement("div");
+    caption.className = "rating-caption";
+    caption.innerHTML = `<span>${lowLabel}</span><span>${highLabel}</span>`;
+    group.appendChild(caption);
+    group.dataset.ratingReady = "true";
   }
 
   function populateStateScaleOptions() {
-    populateScaleOptions(ui.sleepiness, 1, 9);
-    FATIGUE_FIELD_IDS.forEach((fieldId) => populateScaleOptions(ui[fieldId], 1, 5));
+    populateRatingOptions(ui.sleepiness, 1, 9, "目覚めている", "とても眠い");
+    FATIGUE_FIELD_IDS.forEach((fieldId) => populateRatingOptions(ui[fieldId], 1, 5, "なし", "非常に高い"));
   }
 
   function readStoredSettingsProfiles() {
@@ -363,36 +428,29 @@
     }
   }
 
-  function setSelectIfAvailable(element, value) {
-    if (!element || value === undefined || value === null) return;
-    const stringValue = String(value);
-    if ([...element.options].some((option) => option.value === stringValue)) {
-      element.value = stringValue;
-    }
-  }
-
   function applySavedSettings(settings) {
     if (!settings || typeof settings !== "object") return;
     if (settings.participantId !== undefined) ui.participantId.value = settings.participantId;
-    setSelectIfAvailable(ui.deviceType, settings.deviceType);
-    setSelectIfAvailable(ui.handedness, settings.handedness);
-    if (settings.age === null) setSelectIfAvailable(ui.age, "na");
-    else if (settings.age !== undefined) setSelectIfAvailable(ui.age, settings.age);
-    setSelectIfAvailable(ui.usedHand, settings.usedHand);
-    setSelectIfAvailable(ui.visualAcuity, settings.visualAcuity);
-    setSelectIfAvailable(ui.correctionWorn, settings.correctionWorn);
-    setSelectIfAvailable(ui.colorVisionNormal, settings.colorVisionNormal);
-    setSelectIfAvailable(ui.motorNeurologicalDisease, settings.motorNeurologicalDisease);
-    if (settings.sleepiness === null) ui.sleepiness.value = "";
-    else if (settings.sleepiness !== undefined) setSelectIfAvailable(ui.sleepiness, settings.sleepiness);
+    setChoiceValue(ui.deviceType, settings.deviceType);
+    setChoiceValue(ui.handedness, settings.handedness);
+    if (settings.age === null) setChoiceValue(ui.age, "na");
+    else if (settings.age !== undefined) setChoiceValue(ui.age, settings.age);
+    setChoiceValue(ui.gender, settings.gender);
+    setChoiceValue(ui.usedHand, settings.usedHand);
+    setChoiceValue(ui.visualAcuity, settings.visualAcuity);
+    setChoiceValue(ui.correctionWorn, settings.correctionWorn);
+    setChoiceValue(ui.colorVisionNormal, settings.colorVisionNormal);
+    setChoiceValue(ui.motorNeurologicalDisease, settings.motorNeurologicalDisease);
+    if (settings.sleepiness === null) setChoiceValue(ui.sleepiness, "");
+    else if (settings.sleepiness !== undefined) setChoiceValue(ui.sleepiness, settings.sleepiness);
     if (settings.sleepinessTime !== undefined) ui.sleepinessTime.value = settings.sleepinessTime || "";
     FATIGUE_FIELD_IDS.forEach((fieldId) => {
-      if (settings[fieldId] === null) ui[fieldId].value = "";
-      else if (settings[fieldId] !== undefined) setSelectIfAvailable(ui[fieldId], settings[fieldId]);
+      if (settings[fieldId] === null) setChoiceValue(ui[fieldId], "");
+      else if (settings[fieldId] !== undefined) setChoiceValue(ui[fieldId], settings[fieldId]);
     });
-    setSelectIfAvailable(ui.trialsPerBlock, settings.trialsPerBlock);
-    setSelectIfAvailable(ui.perturbationMode, settings.perturbationMode);
-    setSelectIfAvailable(ui.perturbationTiming, settings.perturbationTiming);
+    setChoiceValue(ui.trialsPerBlock, settings.trialsPerBlock);
+    setChoiceValue(ui.perturbationMode, settings.perturbationMode);
+    setChoiceValue(ui.perturbationTiming, settings.perturbationTiming);
     if (settings.rotationAngle !== undefined) ui.rotationAngle.value = settings.rotationAngle;
     if (settings.lagStrength !== undefined) ui.lagStrength.value = Math.round(Number(settings.lagStrength) * 100);
     if (settings.transitionPoint !== undefined) ui.transitionPoint.value = Math.round(Number(settings.transitionPoint) * 100);
@@ -458,8 +516,9 @@
     const requiredFields = [
       [ui.participantId, "参加者ID"],
       [ui.handedness, "利き手"],
-      [ui.age, "年齢"],
       [ui.usedHand, "実験で使用した手"],
+      [ui.age, "年齢"],
+      [ui.gender, "性別"],
       [ui.visualAcuity, "視力"],
       [ui.correctionWorn, "矯正具の課題中装用"],
       [ui.colorVisionNormal, "色覚"],
@@ -468,12 +527,12 @@
       [ui.sleepinessTime, "眠気を記入した時刻"],
       ...FATIGUE_FIELD_IDS.map((fieldId) => [ui[fieldId], `${ui[fieldId].previousElementSibling?.textContent || fieldId}の疲労度`]),
     ];
-    const missing = requiredFields.find(([element]) => !String(element.value || "").trim());
+    const missing = requiredFields.find(([element]) => !String(readChoiceValue(element) || "").trim());
     if (missing) {
       const [element, label] = missing;
       showAppScreen("setup");
       updateSettingsStorageStatus(`${label}を選択または入力してください。`, "error");
-      element.focus();
+      focusControl(element);
       return false;
     }
     return true;
@@ -507,6 +566,7 @@
       ui.deviceType,
       ui.handedness,
       ui.age,
+      ui.gender,
       ui.usedHand,
       ui.visualAcuity,
       ui.correctionWorn,
@@ -528,7 +588,7 @@
       ui.transitionPoint,
       ui.showBoundary,
     ].forEach((element) => {
-      element.disabled = locked;
+      setControlDisabled(element, locked);
     });
 
     ui.startButton.disabled = !canStart;
@@ -631,6 +691,8 @@
       handedness: state.settings.handedness,
       handednessLabel: state.settings.handednessLabel,
       age: state.settings.age,
+      gender: state.settings.gender,
+      genderLabel: state.settings.genderLabel,
       usedHand: state.settings.usedHand,
       usedHandLabel: state.settings.usedHandLabel,
       visualAcuity: state.settings.visualAcuity,
@@ -1235,7 +1297,7 @@
 
   function downloadCsv() {
     const columns = [
-      "sessionTrial", "deviceType", "deviceLabel", "handedness", "handednessLabel", "age", "usedHand", "usedHandLabel",
+      "sessionTrial", "deviceType", "deviceLabel", "handedness", "handednessLabel", "age", "gender", "genderLabel", "usedHand", "usedHandLabel",
       "visualAcuity", "visualAcuityLabel", "correctionWorn", "correctionWornLabel", "colorVisionNormal", "colorVisionNormalLabel",
       "motorNeurologicalDisease", "motorNeurologicalDiseaseLabel", "sleepiness", "sleepinessTime",
       "fingerFatigue", "armFatigue", "shoulderFatigue", "wristFatigue", "neckFatigue", "overallFatigue",

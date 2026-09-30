@@ -28,6 +28,8 @@
               <span id="deviceChip" class="device-chip">MOUSE</span>
             </div>
 
+            <div class="settings-layout">
+              <div class="settings-card profile-card">
             <label class="field-label" for="participantId">参加者ID</label>
             <input id="participantId" class="text-input" type="text" value="P001" maxlength="32" autocomplete="off" />
 
@@ -46,14 +48,28 @@
             </select>
             <p class="field-help">CSVに操作デバイスを記録し、マウスとタッチペンを比較します。</p>
 
-            <label class="field-label" for="handedness">利き手</label>
-            <select id="handedness" class="select-input">
-              <option value="" selected>選択してください</option>
-              <option value="right">右利き</option>
-              <option value="left">左利き</option>
-              <option value="ambidextrous">両利き</option>
-              <option value="prefer_not_to_say">回答しない</option>
-            </select>
+              </div>
+
+              <div class="settings-card participant-card">
+            <fieldset id="handedness" class="radio-group" data-radio-group="handedness">
+              <legend class="field-label">利き手</legend>
+              <div class="radio-options">
+                <label><input type="radio" name="handedness" value="right" />右利き</label>
+                <label><input type="radio" name="handedness" value="left" />左利き</label>
+                <label><input type="radio" name="handedness" value="ambidextrous" />両利き</label>
+                <label><input type="radio" name="handedness" value="prefer_not_to_say" />回答しない</label>
+              </div>
+            </fieldset>
+
+            <fieldset id="usedHand" class="radio-group" data-radio-group="usedHand">
+              <legend class="field-label">実験で使用した手</legend>
+              <div class="radio-options">
+                <label><input type="radio" name="usedHand" value="right" />右手</label>
+                <label><input type="radio" name="usedHand" value="left" />左手</label>
+                <label><input type="radio" name="usedHand" value="both" />両手（試行により変更）</label>
+              </div>
+            </fieldset>
+            <p class="field-help">参加者の利き手とは別に、今回の課題で実際に使用した手を記録します。</p>
 
             <label class="field-label" for="age">年齢</label>
             <select id="age" class="select-input">
@@ -61,95 +77,99 @@
               <option value="na">回答しない</option>
             </select>
 
-            <label class="field-label" for="usedHand">実験で使用した手</label>
-            <select id="usedHand" class="select-input">
-              <option value="" selected>選択してください</option>
-              <option value="right">右手</option>
-              <option value="left">左手</option>
-              <option value="both">両手（試行により変更）</option>
-            </select>
-            <p class="field-help">参加者の利き手とは別に、今回の課題で実際に使用した手を記録します。</p>
+            <fieldset id="gender" class="radio-group" data-radio-group="gender">
+              <legend class="field-label">性別</legend>
+              <div class="radio-options">
+                <label><input type="radio" name="gender" value="male" />男性</label>
+                <label><input type="radio" name="gender" value="female" />女性</label>
+                <label><input type="radio" name="gender" value="other" />その他</label>
+                <label><input type="radio" name="gender" value="prefer_not_to_say" />回答しない</label>
+              </div>
+            </fieldset>
 
-            <div class="settings-grid">
-              <div class="field-group">
-                <label class="field-label" for="visualAcuity">視力</label>
-                <select id="visualAcuity" class="select-input">
-                  <option value="" selected>選択してください</option>
-                  <option value="normal">正常</option>
-                  <option value="corrected">矯正（眼鏡・コンタクト）</option>
-                </select>
               </div>
-              <div class="field-group">
-                <label class="field-label" for="correctionWorn">矯正具の課題中装用</label>
-                <select id="correctionWorn" class="select-input">
-                  <option value="" selected>選択してください</option>
-                  <option value="yes">はい</option>
-                  <option value="no">いいえ</option>
-                </select>
-              </div>
-              <div class="field-group">
-                <label class="field-label" for="colorVisionNormal">色覚は正常か</label>
-                <select id="colorVisionNormal" class="select-input">
-                  <option value="" selected>選択してください</option>
-                  <option value="yes">はい</option>
-                  <option value="no">いいえ</option>
-                </select>
-              </div>
-              <div class="field-group">
-                <label class="field-label" for="motorNeurologicalDisease">腕・手に影響する運動・神経疾患</label>
-                <select id="motorNeurologicalDisease" class="select-input">
-                  <option value="" selected>選択してください</option>
-                  <option value="none">なし</option>
-                  <option value="present">あり</option>
-                </select>
-              </div>
-            </div>
 
-            <p class="field-help">入力した参加者情報・視覚状態・健康状態は、各試行のCSVおよびJSONに記録されます。</p>
-
-            <div class="settings-section-label">実験直前の状態</div>
-            <div class="settings-grid">
-              <div class="field-group">
-                <label class="field-label" for="sleepiness">眠気（1〜9）</label>
-                <select id="sleepiness" class="select-input">
-                  <option value="" selected>選択してください</option>
-                </select>
-                <p class="field-help">1：目覚めている、9：とても眠い</p>
+              <div class="settings-card visual-card">
+                <div class="settings-card-title">視覚・健康状態</div>
+                <div class="settings-grid">
+                  <fieldset id="visualAcuity" class="radio-group field-group" data-radio-group="visualAcuity">
+                    <legend class="field-label">視力</legend>
+                    <div class="radio-options">
+                      <label><input type="radio" name="visualAcuity" value="normal" />正常</label>
+                      <label><input type="radio" name="visualAcuity" value="corrected" />矯正（眼鏡・コンタクト）</label>
+                    </div>
+                  </fieldset>
+                  <fieldset id="correctionWorn" class="radio-group field-group" data-radio-group="correctionWorn">
+                    <legend class="field-label">課題中の矯正具装用</legend>
+                    <div class="radio-options">
+                      <label><input type="radio" name="correctionWorn" value="yes" />はい</label>
+                      <label><input type="radio" name="correctionWorn" value="no" />いいえ</label>
+                    </div>
+                  </fieldset>
+                  <fieldset id="colorVisionNormal" class="radio-group field-group" data-radio-group="colorVisionNormal">
+                    <legend class="field-label">色覚は正常か</legend>
+                    <div class="radio-options">
+                      <label><input type="radio" name="colorVisionNormal" value="yes" />はい</label>
+                      <label><input type="radio" name="colorVisionNormal" value="no" />いいえ</label>
+                    </div>
+                  </fieldset>
+                  <fieldset id="motorNeurologicalDisease" class="radio-group field-group" data-radio-group="motorNeurologicalDisease">
+                    <legend class="field-label">腕・手に影響する運動・神経疾患</legend>
+                    <div class="radio-options">
+                      <label><input type="radio" name="motorNeurologicalDisease" value="none" />なし</label>
+                      <label><input type="radio" name="motorNeurologicalDisease" value="present" />あり</label>
+                    </div>
+                  </fieldset>
+                </div>
+                <p class="field-help">入力した情報は各試行のCSVおよびJSONに記録されます。</p>
               </div>
-              <div class="field-group">
-                <label class="field-label" for="sleepinessTime">眠気を記入した時刻</label>
-                <input id="sleepinessTime" class="text-input" type="time" />
-              </div>
-            </div>
 
-            <div class="settings-section-label">疲労度（1：なし、5：非常に高い）</div>
-            <div class="settings-grid fatigue-grid">
+              <div class="settings-card state-card">
+                <div class="settings-card-title">実験直前の状態</div>
+                <div class="state-grid">
+                  <div class="field-group">
+                    <label class="field-label" for="sleepiness">眠気（1〜9）</label>
+                    <div id="sleepiness" class="rating-scale wide" data-radio-group="sleepiness" role="radiogroup" aria-label="眠気"></div>
+                  </div>
+                  <div class="field-group time-field">
+                    <label class="field-label" for="sleepinessTime">記入時刻</label>
+                    <input id="sleepinessTime" class="text-input" type="time" />
+                  </div>
+                </div>
+                <p class="field-help">1：目覚めている　／　9：とても眠い</p>
+              </div>
+
+              <div class="settings-card fatigue-card">
+                <div class="settings-card-title">疲労度（1：なし、5：非常に高い）</div>
+                <div class="settings-grid fatigue-grid">
               <div class="field-group">
                 <label class="field-label" for="fingerFatigue">指</label>
-                <select id="fingerFatigue" class="select-input"><option value="" selected>選択</option></select>
+                <div id="fingerFatigue" class="rating-scale compact" data-radio-group="fingerFatigue" role="radiogroup" aria-label="指の疲労度"></div>
               </div>
               <div class="field-group">
                 <label class="field-label" for="armFatigue">腕</label>
-                <select id="armFatigue" class="select-input"><option value="" selected>選択</option></select>
+                <div id="armFatigue" class="rating-scale compact" data-radio-group="armFatigue" role="radiogroup" aria-label="腕の疲労度"></div>
               </div>
               <div class="field-group">
                 <label class="field-label" for="shoulderFatigue">肩</label>
-                <select id="shoulderFatigue" class="select-input"><option value="" selected>選択</option></select>
+                <div id="shoulderFatigue" class="rating-scale compact" data-radio-group="shoulderFatigue" role="radiogroup" aria-label="肩の疲労度"></div>
               </div>
               <div class="field-group">
                 <label class="field-label" for="wristFatigue">手首</label>
-                <select id="wristFatigue" class="select-input"><option value="" selected>選択</option></select>
+                <div id="wristFatigue" class="rating-scale compact" data-radio-group="wristFatigue" role="radiogroup" aria-label="手首の疲労度"></div>
               </div>
               <div class="field-group">
                 <label class="field-label" for="neckFatigue">首</label>
-                <select id="neckFatigue" class="select-input"><option value="" selected>選択</option></select>
+                <div id="neckFatigue" class="rating-scale compact" data-radio-group="neckFatigue" role="radiogroup" aria-label="首の疲労度"></div>
               </div>
               <div class="field-group">
                 <label class="field-label" for="overallFatigue">全体</label>
-                <select id="overallFatigue" class="select-input"><option value="" selected>選択</option></select>
+                <div id="overallFatigue" class="rating-scale compact" data-radio-group="overallFatigue" role="radiogroup" aria-label="全体の疲労度"></div>
+                </div>
               </div>
             </div>
 
+              <div class="settings-card experiment-card">
             <label class="field-label" for="trialsPerBlock">1ブロックの試行数</label>
             <select id="trialsPerBlock" class="select-input">
               <option value="8">8（動作確認）</option>
@@ -204,6 +224,8 @@
               <input id="showBoundary" type="checkbox" />
               <span>状態変化の位置を表示（デモ用）</span>
             </label>
+              </div>
+            </div>
           </section>
 
           <section class="panel action-panel">

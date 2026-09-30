@@ -963,3 +963,195 @@ td {
     justify-content: flex-start;
   }
 }
+
+/* Compact setup form and radio/rating controls */
+.workspace[data-screen="setup"] .setup-panel {
+  grid-column: 1 / -1;
+}
+
+.workspace[data-screen="setup"] .action-panel {
+  grid-column: 1 / 2;
+}
+
+.workspace[data-screen="setup"] .instruction-panel {
+  grid-column: 2 / -1;
+}
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.settings-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fbfcfe;
+}
+
+.settings-card-title {
+  margin-bottom: 8px;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.settings-card .field-label,
+.settings-card .radio-group .field-label {
+  margin-top: 11px;
+}
+
+.settings-card > .field-label:first-child,
+.settings-card > .radio-group:first-child .field-label,
+.settings-card-title + .state-grid .field-label {
+  margin-top: 0;
+}
+
+.radio-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.radio-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.radio-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--muted);
+  background: #fff;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.radio-options label:has(input:checked) {
+  border-color: rgba(49, 84, 216, 0.52);
+  color: var(--blue-dark);
+  background: var(--blue-soft);
+}
+
+.radio-options input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--blue);
+}
+
+.state-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px;
+  gap: 14px;
+  align-items: end;
+}
+
+.rating-scale {
+  min-width: 0;
+}
+
+.rating-options {
+  display: grid;
+  gap: 4px;
+}
+
+.rating-scale.wide .rating-options {
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+}
+
+.rating-scale.compact .rating-options {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.rating-options input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rating-option {
+  display: grid;
+  place-items: center;
+  min-height: 33px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.rating-options input:checked + .rating-option {
+  border-color: var(--blue);
+  color: var(--blue-dark);
+  background: var(--blue-soft);
+}
+
+.rating-options input:focus-visible + .rating-option {
+  outline: 3px solid rgba(49, 84, 216, 0.24);
+  outline-offset: 2px;
+}
+
+.rating-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--soft-ink);
+  font-size: 0.64rem;
+}
+
+.rating-scale.compact .rating-caption {
+  font-size: 0.6rem;
+}
+
+.settings-card .field-help {
+  margin-top: 8px;
+}
+
+@media (max-width: 1120px) {
+  .settings-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .workspace[data-screen="setup"] .action-panel,
+  .workspace[data-screen="setup"] .instruction-panel {
+    grid-column: 1 / -1;
+  }
+
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .state-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fatigue-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 721px) {
+  .fatigue-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
