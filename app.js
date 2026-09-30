@@ -6,11 +6,32 @@
   const arenaShell = document.querySelector(".arena-shell");
 
   const ui = {
+    workspace: document.getElementById("workspace"),
+    setupScreen: document.getElementById("setupScreen"),
+    experimentColumn: document.getElementById("experimentColumn"),
+    experimentView: document.getElementById("experimentView"),
+    resultsView: document.getElementById("resultsView"),
     participantId: document.getElementById("participantId"),
+    loadSettingsButton: document.getElementById("loadSettingsButton"),
+    saveSettingsButton: document.getElementById("saveSettingsButton"),
+    settingsStorageStatus: document.getElementById("settingsStorageStatus"),
     deviceType: document.getElementById("deviceType"),
     deviceChip: document.getElementById("deviceChip"),
     handedness: document.getElementById("handedness"),
     age: document.getElementById("age"),
+    usedHand: document.getElementById("usedHand"),
+    visualAcuity: document.getElementById("visualAcuity"),
+    correctionWorn: document.getElementById("correctionWorn"),
+    colorVisionNormal: document.getElementById("colorVisionNormal"),
+    motorNeurologicalDisease: document.getElementById("motorNeurologicalDisease"),
+    sleepiness: document.getElementById("sleepiness"),
+    sleepinessTime: document.getElementById("sleepinessTime"),
+    fingerFatigue: document.getElementById("fingerFatigue"),
+    armFatigue: document.getElementById("armFatigue"),
+    shoulderFatigue: document.getElementById("shoulderFatigue"),
+    wristFatigue: document.getElementById("wristFatigue"),
+    neckFatigue: document.getElementById("neckFatigue"),
+    overallFatigue: document.getElementById("overallFatigue"),
     trialsPerBlock: document.getElementById("trialsPerBlock"),
     perturbationMode: document.getElementById("perturbationMode"),
     perturbationHelp: document.getElementById("perturbationHelp"),
@@ -33,6 +54,7 @@
     csvButton: document.getElementById("csvButton"),
     jsonButton: document.getElementById("jsonButton"),
     downloadGroup: document.getElementById("downloadGroup"),
+    returnToSetupButton: document.getElementById("returnToSetupButton"),
     sessionBadge: document.getElementById("sessionBadge"),
     phaseLabel: document.getElementById("phaseLabel"),
     blockLabel: document.getElementById("blockLabel"),
@@ -51,6 +73,7 @@
     resultsPanel: document.getElementById("resultsPanel"),
     resultsBody: document.getElementById("resultsBody"),
     resultSummary: document.getElementById("resultSummary"),
+    resultParticipantSummary: document.getElementById("resultParticipantSummary"),
     analysisPanel: document.getElementById("analysisPanel"),
     mouseCsvInput: document.getElementById("mouseCsvInput"),
     pencilCsvInput: document.getElementById("pencilCsvInput"),
@@ -102,6 +125,32 @@
     ambidextrous: "両利き",
     prefer_not_to_say: "回答しない",
   };
+  const USED_HAND_LABELS = {
+    right: "右手",
+    left: "左手",
+    both: "両手（試行により変更）",
+  };
+  const VISUAL_ACUITY_LABELS = {
+    normal: "正常",
+    corrected: "矯正（眼鏡・コンタクト）",
+  };
+  const YES_NO_LABELS = {
+    yes: "はい",
+    no: "いいえ",
+  };
+  const MOTOR_NEUROLOGICAL_LABELS = {
+    none: "なし",
+    present: "あり",
+  };
+  const FATIGUE_FIELD_IDS = [
+    "fingerFatigue",
+    "armFatigue",
+    "shoulderFatigue",
+    "wristFatigue",
+    "neckFatigue",
+    "overallFatigue",
+  ];
+  const SETTINGS_STORAGE_KEY = "mouse-mismatch-experiment-settings-v1";
   const PERTURBATION_TIMING_HELP = {
     "mid-trial": "動作途中から変化させ、1回の動作中のオンライン修正を測定します。",
     "trial-start": "各適応試行の開始時から変化させ、試行を重ねた適応曲線を測定します。",
@@ -220,6 +269,24 @@
       handedness: ui.handedness.value,
       handednessLabel: HANDEDNESS_LABELS[ui.handedness.value] || "",
       age: ui.age.value === "na" || ui.age.value === "" ? null : Number(ui.age.value),
+      usedHand: ui.usedHand.value,
+      usedHandLabel: USED_HAND_LABELS[ui.usedHand.value] || "",
+      visualAcuity: ui.visualAcuity.value,
+      visualAcuityLabel: VISUAL_ACUITY_LABELS[ui.visualAcuity.value] || "",
+      correctionWorn: ui.correctionWorn.value,
+      correctionWornLabel: YES_NO_LABELS[ui.correctionWorn.value] || "",
+      colorVisionNormal: ui.colorVisionNormal.value,
+      colorVisionNormalLabel: YES_NO_LABELS[ui.colorVisionNormal.value] || "",
+      motorNeurologicalDisease: ui.motorNeurologicalDisease.value,
+      motorNeurologicalDiseaseLabel: MOTOR_NEUROLOGICAL_LABELS[ui.motorNeurologicalDisease.value] || "",
+      sleepiness: ui.sleepiness.value === "" ? null : Number(ui.sleepiness.value),
+      sleepinessTime: ui.sleepinessTime.value,
+      fingerFatigue: ui.fingerFatigue.value === "" ? null : Number(ui.fingerFatigue.value),
+      armFatigue: ui.armFatigue.value === "" ? null : Number(ui.armFatigue.value),
+      shoulderFatigue: ui.shoulderFatigue.value === "" ? null : Number(ui.shoulderFatigue.value),
+      wristFatigue: ui.wristFatigue.value === "" ? null : Number(ui.wristFatigue.value),
+      neckFatigue: ui.neckFatigue.value === "" ? null : Number(ui.neckFatigue.value),
+      overallFatigue: ui.overallFatigue.value === "" ? null : Number(ui.overallFatigue.value),
       trialsPerBlock: Number(ui.trialsPerBlock.value),
       perturbationMode: ui.perturbationMode.value,
       perturbationTiming: ui.perturbationTiming.value,
@@ -244,17 +311,169 @@
     }
   }
 
-  function validateParticipantSettings() {
-    if (!ui.handedness.value) {
-      ui.overlayTitle.textContent = "利き手を選択してください";
-      ui.overlayBody.textContent = "実験を開始する前に、実験設定で参加者の利き手を選択してください。";
-      ui.arenaHint.textContent = "利き手を選択してから実験を開始してください。";
+  function populateScaleOptions(select, minimum, maximum) {
+    if (!select || select.options.length > 1) return;
+    for (let value = minimum; value <= maximum; value += 1) {
+      const option = document.createElement("option");
+      option.value = String(value);
+      option.textContent = String(value);
+      select.appendChild(option);
+    }
+  }
+
+  function populateStateScaleOptions() {
+    populateScaleOptions(ui.sleepiness, 1, 9);
+    FATIGUE_FIELD_IDS.forEach((fieldId) => populateScaleOptions(ui[fieldId], 1, 5));
+  }
+
+  function readStoredSettingsProfiles() {
+    try {
+      const saved = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (!saved) return {};
+      const parsed = JSON.parse(saved);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function updateSettingsStorageStatus(message = "", status = "") {
+    if (!ui.settingsStorageStatus) return;
+    if (message) {
+      ui.settingsStorageStatus.textContent = message;
+      ui.settingsStorageStatus.dataset.state = status;
+      return;
+    }
+
+    const participantId = ui.participantId.value.trim();
+    if (!participantId) {
+      ui.settingsStorageStatus.textContent = "参加者IDを入力すると、設定を保存・呼び出しできます。";
+      ui.settingsStorageStatus.dataset.state = "";
+      return;
+    }
+
+    const profiles = readStoredSettingsProfiles();
+    if (profiles[participantId]) {
+      const savedAt = profiles[participantId].savedAt ? `（${profiles[participantId].savedAt}）` : "";
+      ui.settingsStorageStatus.textContent = `${participantId}の保存設定があります${savedAt}。呼び出しまたは上書き保存ができます。`;
+      ui.settingsStorageStatus.dataset.state = "success";
+    } else {
+      ui.settingsStorageStatus.textContent = `${participantId}の保存設定はありません。現在の入力内容を保存できます。`;
+      ui.settingsStorageStatus.dataset.state = "";
+    }
+  }
+
+  function setSelectIfAvailable(element, value) {
+    if (!element || value === undefined || value === null) return;
+    const stringValue = String(value);
+    if ([...element.options].some((option) => option.value === stringValue)) {
+      element.value = stringValue;
+    }
+  }
+
+  function applySavedSettings(settings) {
+    if (!settings || typeof settings !== "object") return;
+    if (settings.participantId !== undefined) ui.participantId.value = settings.participantId;
+    setSelectIfAvailable(ui.deviceType, settings.deviceType);
+    setSelectIfAvailable(ui.handedness, settings.handedness);
+    if (settings.age === null) setSelectIfAvailable(ui.age, "na");
+    else if (settings.age !== undefined) setSelectIfAvailable(ui.age, settings.age);
+    setSelectIfAvailable(ui.usedHand, settings.usedHand);
+    setSelectIfAvailable(ui.visualAcuity, settings.visualAcuity);
+    setSelectIfAvailable(ui.correctionWorn, settings.correctionWorn);
+    setSelectIfAvailable(ui.colorVisionNormal, settings.colorVisionNormal);
+    setSelectIfAvailable(ui.motorNeurologicalDisease, settings.motorNeurologicalDisease);
+    if (settings.sleepiness === null) ui.sleepiness.value = "";
+    else if (settings.sleepiness !== undefined) setSelectIfAvailable(ui.sleepiness, settings.sleepiness);
+    if (settings.sleepinessTime !== undefined) ui.sleepinessTime.value = settings.sleepinessTime || "";
+    FATIGUE_FIELD_IDS.forEach((fieldId) => {
+      if (settings[fieldId] === null) ui[fieldId].value = "";
+      else if (settings[fieldId] !== undefined) setSelectIfAvailable(ui[fieldId], settings[fieldId]);
+    });
+    setSelectIfAvailable(ui.trialsPerBlock, settings.trialsPerBlock);
+    setSelectIfAvailable(ui.perturbationMode, settings.perturbationMode);
+    setSelectIfAvailable(ui.perturbationTiming, settings.perturbationTiming);
+    if (settings.rotationAngle !== undefined) ui.rotationAngle.value = settings.rotationAngle;
+    if (settings.lagStrength !== undefined) ui.lagStrength.value = Math.round(Number(settings.lagStrength) * 100);
+    if (settings.transitionPoint !== undefined) ui.transitionPoint.value = Math.round(Number(settings.transitionPoint) * 100);
+    if (settings.showBoundary !== undefined) ui.showBoundary.checked = Boolean(settings.showBoundary);
+    updateSettingReadouts();
+    updateSettingsStorageStatus();
+  }
+
+  function saveSettingsProfile() {
+    const participantId = ui.participantId.value.trim();
+    if (!participantId) {
+      updateSettingsStorageStatus("参加者IDを入力してから設定を保存してください。", "error");
+      ui.participantId.focus();
       return false;
     }
-    if (!ui.age.value) {
-      ui.overlayTitle.textContent = "年齢を選択してください";
-      ui.overlayBody.textContent = "実験を開始する前に、実験設定で参加者の年齢を選択してください。";
-      ui.arenaHint.textContent = "年齢を選択してから実験を開始してください。";
+
+    const profiles = readStoredSettingsProfiles();
+    const overwriting = Boolean(profiles[participantId]);
+    if (overwriting && !window.confirm(`${participantId}の保存設定を現在の入力内容で上書きしますか？`)) return false;
+
+    const settings = readSettings();
+    settings.savedAt = new Date().toLocaleString("ja-JP");
+    profiles[participantId] = settings;
+    try {
+      window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(profiles));
+      updateSettingsStorageStatus(`${participantId}の設定を${overwriting ? "上書き保存" : "保存"}しました。`, "success");
+      return true;
+    } catch (error) {
+      updateSettingsStorageStatus("設定を保存できませんでした。ブラウザの保存領域を確認してください。", "error");
+      return false;
+    }
+  }
+
+  function loadSettingsProfile() {
+    const participantId = ui.participantId.value.trim();
+    if (!participantId) {
+      updateSettingsStorageStatus("参加者IDを入力してから保存設定を呼び出してください。", "error");
+      ui.participantId.focus();
+      return false;
+    }
+
+    const profiles = readStoredSettingsProfiles();
+    if (!profiles[participantId]) {
+      updateSettingsStorageStatus(`${participantId}の保存設定が見つかりません。`, "error");
+      return false;
+    }
+
+    applySavedSettings(profiles[participantId]);
+    updateSettingsStorageStatus(`${participantId}の保存設定を呼び出しました。必要に応じて変更して上書き保存できます。`, "success");
+    return true;
+  }
+
+  function showAppScreen(screen) {
+    const normalized = ["setup", "experiment", "results"].includes(screen) ? screen : "setup";
+    ui.workspace.dataset.screen = normalized;
+    ui.setupScreen.hidden = normalized !== "setup";
+    ui.experimentColumn.hidden = normalized === "setup";
+    ui.experimentView.hidden = normalized !== "experiment";
+    ui.resultsView.hidden = normalized !== "results";
+  }
+
+  function validateParticipantSettings() {
+    const requiredFields = [
+      [ui.participantId, "参加者ID"],
+      [ui.handedness, "利き手"],
+      [ui.age, "年齢"],
+      [ui.usedHand, "実験で使用した手"],
+      [ui.visualAcuity, "視力"],
+      [ui.correctionWorn, "矯正具の課題中装用"],
+      [ui.colorVisionNormal, "色覚"],
+      [ui.motorNeurologicalDisease, "運動・神経疾患"],
+      [ui.sleepiness, "眠気"],
+      [ui.sleepinessTime, "眠気を記入した時刻"],
+      ...FATIGUE_FIELD_IDS.map((fieldId) => [ui[fieldId], `${ui[fieldId].previousElementSibling?.textContent || fieldId}の疲労度`]),
+    ];
+    const missing = requiredFields.find(([element]) => !String(element.value || "").trim());
+    if (missing) {
+      const [element, label] = missing;
+      showAppScreen("setup");
+      updateSettingsStorageStatus(`${label}を選択または入力してください。`, "error");
+      element.focus();
       return false;
     }
     return true;
@@ -277,15 +496,30 @@
   }
 
   function updateControls() {
-    const active = ["running", "paused", "break"].includes(state.sessionState);
+    const active = ["running", "paused", "break", "countdown"].includes(state.sessionState);
     const canStart = state.sessionState === "idle" || state.sessionState === "complete";
     const locked = active;
 
     [
       ui.participantId,
+      ui.loadSettingsButton,
+      ui.saveSettingsButton,
       ui.deviceType,
       ui.handedness,
       ui.age,
+      ui.usedHand,
+      ui.visualAcuity,
+      ui.correctionWorn,
+      ui.colorVisionNormal,
+      ui.motorNeurologicalDisease,
+      ui.sleepiness,
+      ui.sleepinessTime,
+      ui.fingerFatigue,
+      ui.armFatigue,
+      ui.shoulderFatigue,
+      ui.wristFatigue,
+      ui.neckFatigue,
+      ui.overallFatigue,
       ui.trialsPerBlock,
       ui.perturbationMode,
       ui.perturbationTiming,
@@ -397,6 +631,24 @@
       handedness: state.settings.handedness,
       handednessLabel: state.settings.handednessLabel,
       age: state.settings.age,
+      usedHand: state.settings.usedHand,
+      usedHandLabel: state.settings.usedHandLabel,
+      visualAcuity: state.settings.visualAcuity,
+      visualAcuityLabel: state.settings.visualAcuityLabel,
+      correctionWorn: state.settings.correctionWorn,
+      correctionWornLabel: state.settings.correctionWornLabel,
+      colorVisionNormal: state.settings.colorVisionNormal,
+      colorVisionNormalLabel: state.settings.colorVisionNormalLabel,
+      motorNeurologicalDisease: state.settings.motorNeurologicalDisease,
+      motorNeurologicalDiseaseLabel: state.settings.motorNeurologicalDiseaseLabel,
+      sleepiness: state.settings.sleepiness,
+      sleepinessTime: state.settings.sleepinessTime,
+      fingerFatigue: state.settings.fingerFatigue,
+      armFatigue: state.settings.armFatigue,
+      shoulderFatigue: state.settings.shoulderFatigue,
+      wristFatigue: state.settings.wristFatigue,
+      neckFatigue: state.settings.neckFatigue,
+      overallFatigue: state.settings.overallFatigue,
       perturbationMode: state.settings.perturbationMode,
       perturbationAngleDeg: effectivePerturbationAngle(state.settings.perturbationMode, state.settings.rotationAngle),
       perturbationTiming: state.settings.perturbationTiming,
@@ -475,15 +727,10 @@
   }
 
   function showIntro() {
-    const deviceLabel = DEVICE_LABELS[ui.deviceType.value] || DEVICE_LABELS.mouse;
-    const timing = ui.perturbationTiming.value;
-    const timingLabel = timing === "trial-start" ? "試行開始からの摂動" : "動作途中の摂動";
-    showOverlay(
-      `${deviceLabel}実験を開始してください`,
-      `通常状態、${timingLabel}、後効果の順に測定します。参加者IDと設定を確認してから開始してください。`,
-      "実験を開始",
-      startSession,
-    );
+    showAppScreen("setup");
+    hideOverlay();
+    updateSettingsStorageStatus();
+    ui.arenaHint.textContent = "設定を入力してから、実験を開始してください。";
   }
 
   function startSession() {
@@ -511,6 +758,8 @@
     ui.resultsPanel.hidden = true;
     ui.resultsBody.innerHTML = "";
     ui.resultSummary.textContent = "";
+    ui.resultParticipantSummary.textContent = "実験終了後の結果とデータ保存";
+    showAppScreen("experiment");
     startCountdown(
       "実験開始の準備",
       "3秒後に最初の試行を開始します。開始円にマウスまたはタッチペンを準備してください。",
@@ -540,6 +789,7 @@
     ui.resultsPanel.hidden = true;
     ui.resultsBody.innerHTML = "";
     ui.resultSummary.textContent = "";
+    ui.resultParticipantSummary.textContent = "実験終了後の結果とデータ保存";
     ui.movementTimeReadout.textContent = "—";
     ui.errorReadout.textContent = "—";
     ui.successReadout.textContent = "—";
@@ -772,15 +1022,9 @@
     ui.arenaHint.textContent = "セッションが終了しました。結果を確認し、CSVまたはJSONを保存できます。";
     ui.resultsPanel.hidden = false;
     renderResults();
-    showOverlay(
-      "セッション完了",
-      `全${state.trials.length}試行が終了しました。必要なデータを保存してからリセットしてください。`,
-      "結果を確認",
-      () => {
-        hideOverlay();
-        ui.resultsPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-      },
-    );
+    ui.resultParticipantSummary.textContent = `${state.settings?.participantId || "—"} / ${DEVICE_LABELS[state.settings?.deviceType] || "—"}：全${state.trials.length}試行。CSV・JSONを保存し、軌道と適応曲線を確認できます。`;
+    hideOverlay();
+    showAppScreen("results");
     updateProgress();
     updateReadout();
     drawArena();
@@ -991,7 +1235,11 @@
 
   function downloadCsv() {
     const columns = [
-      "sessionTrial", "deviceType", "deviceLabel", "handedness", "handednessLabel", "age", "phaseIndex", "phaseKey", "phaseLabel", "blockIndex", "trialIndex",
+      "sessionTrial", "deviceType", "deviceLabel", "handedness", "handednessLabel", "age", "usedHand", "usedHandLabel",
+      "visualAcuity", "visualAcuityLabel", "correctionWorn", "correctionWornLabel", "colorVisionNormal", "colorVisionNormalLabel",
+      "motorNeurologicalDisease", "motorNeurologicalDiseaseLabel", "sleepiness", "sleepinessTime",
+      "fingerFatigue", "armFatigue", "shoulderFatigue", "wristFatigue", "neckFatigue", "overallFatigue",
+      "phaseIndex", "phaseKey", "phaseLabel", "blockIndex", "trialIndex",
       "perturbationMode", "perturbationAngleDeg", "targetX", "targetY", "targetWidth", "amplitude", "fittsId", "targetAngle",
       "perturbationTiming",
       "movementTime", "transitionOccurred", "transitionTime", "rawEndX", "rawEndY",
@@ -1014,7 +1262,7 @@
     const payload = {
       metadata: {
         app: "mouse-mismatch-experiment",
-        version: "0.4.0",
+        version: "0.5.0",
         participantId: state.settings?.participantId || null,
         sessionStartedAt: state.sessionStartedAt,
         sessionFinishedAt: state.sessionFinishedAt,
@@ -1851,6 +2099,15 @@
   });
   ui.pauseButton.addEventListener("click", togglePause);
   ui.resetButton.addEventListener("click", resetSession);
+  ui.loadSettingsButton.addEventListener("click", loadSettingsProfile);
+  ui.saveSettingsButton.addEventListener("click", saveSettingsProfile);
+  ui.participantId.addEventListener("input", () => updateSettingsStorageStatus());
+  ui.returnToSetupButton.addEventListener("click", () => {
+    if (state.sessionState === "running" || state.sessionState === "paused" || state.sessionState === "break" || state.sessionState === "countdown") return;
+    setSessionState("idle");
+    showIntro();
+    updateProgress();
+  });
   ui.overlayButton.addEventListener("click", () => {
     if (typeof state.overlayAction === "function") state.overlayAction();
   });
@@ -1896,6 +2153,7 @@
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 
   populateAgeOptions();
+  populateStateScaleOptions();
   updateSettingReadouts();
   setSessionState("idle");
   updateProgress();
